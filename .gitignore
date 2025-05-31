@@ -1,0 +1,36 @@
+# Create .gitignore file
+echo "# Ignore configuration files with sensitive information
+/api/config/config.php
+
+# Ignore upload directories
+/api/uploads/*
+!/api/uploads/.gitkeep
+
+# Ignore vendor directories
+/vendor/
+
+# Ignore logs
+/logs/
+*.log
+
+# Ignore OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE/Editor specific files
+.vscode/
+.idea/
+*.sublime-*
+*.swp
+*.swo
+
+# Ignore PHP composer files
+composer.lock
+
+# Ignore node modules
+node_modules/
+npm-debug.log
+
+# Ignore build artifacts
+/build/
+/dist/" > .gitignore
