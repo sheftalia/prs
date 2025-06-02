@@ -189,53 +189,48 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
         });
     </script>
 
-    <!-- API Authentication -->
+    <!-- API Authentication with 401 Handling -->
     <script>
     /**
-    * API Authentication Helper
-    * Automatically adds JWT token to all fetch requests
-    */
+     * API Authentication Helper
+     * Automatically adds JWT token to all fetch requests and handles 401 errors
+     */
     (function() {
-        // Store the original fetch function
+        // Store the original fetch function (only once)
         const originalFetch = window.fetch;
-    
-        // Override fetch with our version that adds the Authorization header
+        
+        // Override fetch with our enhanced version
         window.fetch = function(url, options = {}) {
             // Get the token from session
             const token = '<?php echo isset($_SESSION["token"]) ? $_SESSION["token"] : ""; ?>';
-        
+            
             // Set up headers if they don't exist
             if (!options.headers) {
                 options.headers = {};
             }
-        
+            
             // Only add Authorization if we have a token
             if (token) {
                 options.headers['Authorization'] = 'Bearer ' + token;
             }
-        
+            
             // Call the original fetch with our enhanced options
-            return originalFetch(url, options);
+            return originalFetch(url, options)
+                .then(response => {
+                    // Handle 401 errors
+                    if (response.status === 401) {
+                        console.log('Unauthorized request detected, redirecting to login');
+                        // Redirect to login page after a short delay
+                        setTimeout(() => {
+                            window.location.href = 'login.php?session_expired=1';
+                        }, 100);
+                    }
+                    return response;
+                });
         };
     })();
     </script>
-    <script>
-    // Intercept fetch requests to handle 401 errors
-    const originalFetch = window.fetch;
-    window.fetch = function(url, options = {}) {
-        return originalFetch(url, options)
-            .then(response => {
-                if (response.status === 401) {
-                    console.log('Unauthorized request detected, redirecting to login');
-                    // Redirect to login page after a short delay
-                    setTimeout(() => {
-                        window.location.href = 'login.php?session_expired=1';
-                    }, 100);
-                }
-                return response;
-            });
-    };
-    </script>
+
     <script src="assets/js/session-timeout.js"></script>
 </body>
 </html>

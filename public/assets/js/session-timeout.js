@@ -3,11 +3,13 @@
  */
 (function() {
     // Configuration
-    const warningTime = 4 * 60 * 1000; // 4 minutes
-    const logoutTime = 5 * 60 * 1000;  // 5 minutes
+    const warningTime = 60 * 1000; // 1 minute
+    const countdownDuration = 30; // 30 seconds
+    const logoutTime = warningTime + (countdownDuration * 1000); // 1 min + 30 sec
     
     let warningTimer;
     let logoutTimer;
+    let countdownInterval;
     let warningShown = false;
     let modalCreated = false;
     
@@ -30,7 +32,7 @@
                     <h3 class="modal-title">Session Timeout Warning</h3>
                 </div>
                 <div class="modal-body">
-                    <p>Your session will expire in <span id="timeout-countdown">60</span> seconds due to inactivity.</p>
+                    <p>Your session will expire in <span id="timeout-countdown">${countdownDuration}</span> seconds due to inactivity.</p>
                     <p>Do you want to continue?</p>
                 </div>
                 <div class="modal-footer">
@@ -46,8 +48,7 @@
         // Add event listeners
         document.getElementById('session-continue-btn').addEventListener('click', function() {
             console.log("Continue button clicked");
-            resetTimers();
-            hideWarning();
+            continueSession();
         });
         
         document.getElementById('session-logout-btn').addEventListener('click', function() {
@@ -66,6 +67,9 @@
         }
         warningShown = true;
         
+        // Stop tracking activity temporarily
+        stopTrackingActivity();
+        
         const modal = document.getElementById('session-timeout-modal');
         if (modal) {
             modal.style.display = 'flex'; // Use inline style for maximum compatibility
@@ -75,17 +79,23 @@
         }
         
         // Start countdown
-        let countdown = 60;
+        let countdown = countdownDuration;
         const countdownEl = document.getElementById('timeout-countdown');
         if (countdownEl) {
             countdownEl.textContent = countdown;
             
-            const countdownInterval = setInterval(function() {
+            // Clear any existing interval
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            countdownInterval = setInterval(function() {
                 countdown--;
                 countdownEl.textContent = countdown;
                 
                 if (countdown <= 0) {
                     clearInterval(countdownInterval);
+                    // Don't automatically logout - the logoutTimer will handle that
                 }
             }, 1000);
         }
@@ -95,10 +105,25 @@
     function hideWarning() {
         console.log("Hiding warning");
         warningShown = false;
+        
+        // Clear countdown interval
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+        }
+        
         const modal = document.getElementById('session-timeout-modal');
         if (modal) {
             modal.style.display = 'none';
         }
+    }
+    
+    // Continue session (user clicked "Continue")
+    function continueSession() {
+        console.log("Continuing session");
+        hideWarning();
+        resetTimers();
+        startTrackingActivity();
     }
     
     // Reset timers
@@ -107,37 +132,46 @@
         clearTimeout(warningTimer);
         clearTimeout(logoutTimer);
         
-        if (warningShown) {
-            hideWarning();
-        }
-        
         warningTimer = setTimeout(function() {
             console.log("Warning timer triggered");
             showWarning();
+            
+            // Set logout timer after warning is shown
+            logoutTimer = setTimeout(function() {
+                console.log("Logout timer triggered");
+                window.location.href = 'logout.php';
+            }, countdownDuration * 1000);
+            
         }, warningTime);
-        
-        logoutTimer = setTimeout(function() {
-            console.log("Logout timer triggered");
-            window.location.href = 'logout.php';
-        }, logoutTime);
     }
     
     // Track user activity
-    function trackActivity() {
+    function handleUserActivity() {
+        // Only reset timers if warning is not shown
+        if (!warningShown) {
+            resetTimers();
+        }
+    }
+    
+    // Start tracking user activity
+    function startTrackingActivity() {
         ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(function(event) {
-            document.addEventListener(event, function() {
-                console.log("User activity detected:", event);
-                resetTimers();
-            }, false);
+            document.addEventListener(event, handleUserActivity);
+        });
+    }
+    
+    // Stop tracking user activity
+    function stopTrackingActivity() {
+        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(function(event) {
+            document.removeEventListener(event, handleUserActivity);
         });
     }
     
     // Initialize
     function init() {
         console.log("Initializing session timeout");
-        // Don't create the modal right away
         resetTimers(); // Start the timers
-        trackActivity(); // Start tracking activity
+        startTrackingActivity(); // Start tracking activity
     }
     
     // Check if user is logged in before initializing

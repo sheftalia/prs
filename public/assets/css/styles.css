@@ -820,6 +820,27 @@ tr:hover {
     gap: var(--spacing-md);
 }
 
+/* Dark mode modal styles */
+.dark-theme .modal {
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.dark-theme .modal-header,
+.dark-theme .modal-footer {
+    border-color: var(--border-color);
+}
+
+.dark-theme .modal-close {
+    color: var(--color-grey-light);
+}
+
+.dark-theme .alert {
+    background-color: var(--surface-color);
+    border-color: var(--border-color);
+}
+
 /* Responsive Styles */
 @media (max-width: 768px) {
     .header {
