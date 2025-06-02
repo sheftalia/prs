@@ -55,6 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user'] = $result['data']['user'];
         $_SESSION['token'] = $result['data']['token'];
         
+        //store token in sessionStorage
+        echo '<script>
+            sessionStorage.setItem("jwt_token", "' . $result['data']['token'] . '");
+        </script>';
+
         // Redirect to dashboard
         header('Location: ../index.php');
         exit;

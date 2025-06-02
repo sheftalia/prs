@@ -1,4 +1,25 @@
 <?php
+// Temporary debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+?>
+<script>
+// Debug API responses
+const originalFetch = window.fetch;
+window.fetch = function(...args) {
+    return originalFetch(...args)
+        .then(response => {
+            console.log(`Fetch to ${args[0]}:`, response.clone());
+            return response;
+        })
+        .catch(error => {
+            console.error(`Fetch error for ${args[0]}:`, error);
+            throw error;
+        });
+};
+</script>
+
+<?php
 // Get user role for role-specific content
 $userRole = $_SESSION['user']['role_id'];
 ?>
@@ -60,9 +81,8 @@ $userRole = $_SESSION['user']['role_id'];
             <div class="stat-card">
                 <div class="stat-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path>
-                        <path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path>
-                        <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"></path>
+                        <path d="M3 21V8l9-4 9 4v13"></path>
+                        <path d="M9 21v-8h6v8"></path>
                     </svg>
                 </div>
                 <div class="stat-value" id="total-stock">--</div>

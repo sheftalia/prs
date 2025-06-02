@@ -72,16 +72,18 @@
     --z-index-modal: 1000;
 }
 
-h1, h2, h3, .card-title, .page-header h1 {
+/* Font settings */
+h1 {
     font-family: 'Frutiger Bold', Arial, sans-serif;
     font-weight: normal;
 }
 
-h4, h5, h6, .stat-label, .nav a, .user-name {
-    font-family: 'Frutiger', Arial, sans-serif;
+h2, h3, h4, h5, h6, .card-title, .page-header h1 {
+    font-family: Arial, sans-serif;
+    font-weight: bold;
 }
 
-body, p, input, button, select, textarea, table {
+p, span, div, input, button, select, textarea, table {
     font-family: Arial, sans-serif;
 }
 
@@ -888,4 +890,9 @@ tr:hover {
     .btn {
         padding: var(--spacing-sm) var(--spacing-md);
     }
+}
+
+/* Fix button text size inconsistency */
+.modal-footer .btn {
+    font-size: 1em;
 }

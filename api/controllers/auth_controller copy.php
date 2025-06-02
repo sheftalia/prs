@@ -48,34 +48,31 @@ class AuthController {
         
         // Check if user exists
         if ($user->readByEmail()) {
-            // TEMPORARY: Skip password verification for testing
-// IMPORTANT: REMOVE THIS IN PRODUCTION!
-// Debug info
-error_log("User found: " . $user->email);
-error_log("Provided password: " . $data['password']);
-error_log("Stored hash: " . $user->password_hash);
-
-// Always allow login regardless of password
-// Update last login timestamp
-$user->updateLastLogin();
-
-// Generate JWT token
-$token = generateJWT($user->user_id, $user->role_id);
-
-// Log activity
-logActivity($user->user_id, 'LOGIN', 'users', $user->user_id);
-
-// Return success with token and user info
-sendResponse('success', 'Login successful', [
-    'token' => $token,
-    'user' => [
-        'user_id' => $user->user_id,
-        'full_name' => $user->full_name,
-        'email' => $user->email,
-        'prs_id' => $user->prs_id,
-        'role_id' => $user->role_id
-    ]
-]);
+            // Verify password
+            if (password_verify($data['password'], $user->password_hash)) {
+                // Update last login timestamp
+                $user->updateLastLogin();
+                
+                // Generate JWT token
+                $token = generateJWT($user->user_id, $user->role_id);
+                
+                // Log activity
+                logActivity($user->user_id, 'LOGIN', 'users', $user->user_id);
+                
+                // Return success with token and user info
+                sendResponse('success', 'Login successful', [
+                    'token' => $token,
+                    'user' => [
+                        'user_id' => $user->user_id,
+                        'full_name' => $user->full_name,
+                        'email' => $user->email,
+                        'prs_id' => $user->prs_id,
+                        'role_id' => $user->role_id
+                    ]
+                ]);
+            } else {
+                handleError('Invalid email or password', 401);
+            }
         } else {
             handleError('Invalid email or password', 401);
         }

@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function loadItems(page = 1) {
     const apiEndpoint = <?php echo $userRole <= 2 ? "'/prs/api/items'" : "'/prs/api/items?action=active'"; ?>;
     
-    fetch(`${apiEndpoint}&page=${page}&limit=10`)
+    fetch(`${apiEndpoint}?page=${page}&limit=10`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {

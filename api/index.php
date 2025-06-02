@@ -1,4 +1,22 @@
 <?php
+// Debug incoming request headers
+$allHeaders = getallheaders();
+error_log("All request headers: " . json_encode($allHeaders));
+if (isset($allHeaders['Authorization'])) {
+    error_log("Authorization header is present!");
+} else {
+    error_log("Authorization header is NOT present!");
+}
+
+// Also check $_SERVER
+if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+    error_log("HTTP_AUTHORIZATION server var is present!");
+} else if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+    error_log("REDIRECT_HTTP_AUTHORIZATION server var is present!");
+} else {
+    error_log("No authorization server vars found");
+}
+
 // Allow from any origin
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");

@@ -55,13 +55,33 @@ function validateJWT($token) {
 
 // Function to get current user from JWT token
 function getCurrentUser() {
+    // Different ways to get the Authorization header (Apache can be tricky)
     $headers = getallheaders();
+    $authHeader = null;
     
-    if (!isset($headers['Authorization'])) {
+    // Method 1: Direct from headers
+    if (isset($headers['Authorization'])) {
+        $authHeader = $headers['Authorization'];
+    } 
+    // Method 2: Apache mod_rewrite specific
+    else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
+    }
+    // Method 3: Apache with PHP as CGI
+    else if (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+        $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+    }
+    // Method 4: Try uppercase (some servers normalize header names)
+    else if (isset($headers['AUTHORIZATION'])) {
+        $authHeader = $headers['AUTHORIZATION'];
+    }
+
+    error_log("Auth header value found: " . ($authHeader ? 'YES' : 'NO'));
+    if ($authHeader) error_log("Auth header: " . substr($authHeader, 0, 30) . "...");
+    
+    if (!$authHeader) {
         return null;
     }
-    
-    $authHeader = $headers['Authorization'];
     
     if (strpos($authHeader, 'Bearer ') !== 0) {
         return null;
