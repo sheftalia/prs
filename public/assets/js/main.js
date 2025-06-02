@@ -382,27 +382,37 @@ function handleApiFormSubmit(event) {
 }
 
 // Toggle modal visibility
-function toggleModal(event) {
-    const modalId = event.currentTarget.getAttribute('data-modal-target');
-    const modal = document.getElementById(modalId);
+function toggleModal(modalElement) {
+    // If passed an event object, get the modal from data attribute
+    if (modalElement && modalElement.currentTarget) {
+        const modalId = modalElement.currentTarget.getAttribute('data-modal-target');
+        modalElement = document.getElementById(modalId);
+    }
+    // If passed a string ID, get the element
+    else if (typeof modalElement === 'string') {
+        modalElement = document.getElementById(modalElement);
+    }
     
-    if (modal) {
-        modal.classList.toggle('hidden');
+    // Toggle the modal visibility
+    if (modalElement) {
+        modalElement.classList.toggle('hidden');
         
-        // Add event listener to close button
-        const closeButton = modal.querySelector('.modal-close');
-        if (closeButton) {
-            closeButton.addEventListener('click', () => {
-                modal.classList.add('hidden');
+        // Setup close button events
+        if (!modalElement.classList.contains('hidden')) {
+            const closeButtons = modalElement.querySelectorAll('.modal-close');
+            closeButtons.forEach(button => {
+                button.onclick = function() {
+                    modalElement.classList.add('hidden');
+                };
             });
+            
+            // Handle click outside
+            modalElement.onclick = function(e) {
+                if (e.target === modalElement) {
+                    modalElement.classList.add('hidden');
+                }
+            };
         }
-        
-        // Close modal when clicking outside
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
-            }
-        });
     }
 }
 

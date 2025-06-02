@@ -66,7 +66,23 @@ switch ($endpoint) {
     case 'users':
         include_once 'controllers/user_controller.php';
         $controller = new UserController($db);
-        $controller->processRequest($id, $action);
+        
+        // Handle profile and activity endpoints specifically
+        if (count($endpoints) > 1 && $endpoints[1] == 'profile') {
+            $controller->processRequest(null, 'profile');
+        } 
+        else if (count($endpoints) > 1 && $endpoints[1] == 'activity') {
+            $controller->processRequest(null, 'activity');
+        }
+        else if ($id && $action) {
+            $controller->processRequest($id, $action);
+        } 
+        else if ($id) {
+            $controller->processRequest($id);
+        } 
+        else {
+            $controller->processRequest();
+        }
         break;
         
     case 'vaccinations':
