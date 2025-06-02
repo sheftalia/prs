@@ -52,6 +52,12 @@ if (isset($_SESSION['register_success'])) {
                 <h1>Sign In</h1>
                 <p>Enter your credentials to access the system</p>
             </div>
+
+            <?php if (isset($_GET['session_expired'])): ?>
+            <div class="alert alert-warning">
+                Your session has expired. Please log in again.
+            </div>
+            <?php endif; ?>
             
             <?php if ($error): ?>
             <div class="alert alert-error"><?php echo $error; ?></div>

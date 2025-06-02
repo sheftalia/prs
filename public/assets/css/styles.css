@@ -767,17 +767,22 @@ tr:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: var(--z-index-modal);
+    z-index: 1000;
+}
+
+.modal-backdrop.hidden,
+.modal-backdrop[style*="display: none"] {
+    display: none !important;
 }
 
 .modal {
-    background-color: var(--surface-color);
-    border-radius: var(--border-radius-md);
-    box-shadow: 0 8px 24px var(--shadow-color);
-    width: 100%;
+    background-color: white;
+    border-radius: 8px;
+    width: 90%;
     max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .modal-header {

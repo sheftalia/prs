@@ -219,5 +219,23 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
         };
     })();
     </script>
+    <script>
+    // Intercept fetch requests to handle 401 errors
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+        return originalFetch(url, options)
+            .then(response => {
+                if (response.status === 401) {
+                    console.log('Unauthorized request detected, redirecting to login');
+                    // Redirect to login page after a short delay
+                    setTimeout(() => {
+                        window.location.href = 'login.php?session_expired=1';
+                    }, 100);
+                }
+                return response;
+            });
+    };
+    </script>
+    <script src="assets/js/session-timeout.js"></script>
 </body>
 </html>
