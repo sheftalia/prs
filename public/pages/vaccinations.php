@@ -18,52 +18,31 @@ $userId = $_SESSION['user']['user_id'];
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M19.82 2H4.18A2.18 2.18 0 0 0 2 4.18v15.64A2.18 2.18 0 0 0 4.18 22h15.64A2.18 2.18 0 0 0 22 19.82V4.18A2.18 2.18 0 0 0 19.82 2Z"></path>
-                        <path d="M7 2v20"></path>
-                        <path d="M17 2v20"></path>
-                        <path d="M2 12h20"></path>
-                        <path d="M2 7h5"></path>
-                        <path d="M2 17h5"></path>
-                        <path d="M17 17h5"></path>
-                        <path d="M17 7h5"></path>
-                    </svg>
+                    <i class="fas fa-syringe"></i>
                 </div>
                 <div class="stat-value" id="total-vaccinations">--</div>
                 <div class="stat-label">Total Records</div>
             </div>
-            
+
             <div class="stat-card">
                 <div class="stat-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
+                    <i class="fas fa-check-circle"></i>
                 </div>
                 <div class="stat-value" id="verified-vaccinations">--</div>
                 <div class="stat-label">Verified Records</div>
             </div>
-            
+
             <div class="stat-card">
                 <div class="stat-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
+                    <i class="fas fa-users"></i>
                 </div>
                 <div class="stat-value" id="vaccinated-users">--</div>
                 <div class="stat-label">Vaccinated Users</div>
             </div>
-            
+
             <div class="stat-card">
                 <div class="stat-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <path d="M12 8v4"></path>
-                        <path d="M12 16h.01"></path>
-                    </svg>
+                    <i class="fas fa-hourglass-half"></i>
                 </div>
                 <div class="stat-value" id="pending-verification">--</div>
                 <div class="stat-label">Pending Verification</div>

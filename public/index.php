@@ -37,7 +37,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
     
     <!-- Base CSS -->
     <link rel="stylesheet" href="assets/css/styles.css">
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="assets/images/favicon.png" type="image/png">
 
     <!-- Theme toggle - load appropriate theme based on user preference -->
@@ -93,12 +93,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                     <ul>
                         <li class="<?php echo $page === 'dashboard' ? 'active' : ''; ?>">
                             <a href="index.php?page=dashboard">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="3" width="7" height="9"></rect>
-                                    <rect x="14" y="3" width="7" height="5"></rect>
-                                    <rect x="14" y="12" width="7" height="9"></rect>
-                                    <rect x="3" y="16" width="7" height="5"></rect>
-                                </svg>
+                                <i class="fas fa-tachometer-alt"></i>
                                 Dashboard
                             </a>
                         </li>
@@ -106,12 +101,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                         <?php if ($userRole <= 2): // Admin & Government Officials ?>
                         <li class="<?php echo $page === 'users' ? 'active' : ''; ?>">
                             <a href="index.php?page=users">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="9" cy="7" r="4"></circle>
-                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                </svg>
+                                <i class="fas fa-users"></i>
                                 Users
                             </a>
                         </li>
@@ -119,27 +109,14 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                         
                         <li class="<?php echo $page === 'vaccinations' ? 'active' : ''; ?>">
                             <a href="index.php?page=vaccinations">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M19.82 2H4.18A2.18 2.18 0 0 0 2 4.18v15.64A2.18 2.18 0 0 0 4.18 22h15.64A2.18 2.18 0 0 0 22 19.82V4.18A2.18 2.18 0 0 0 19.82 2Z"></path>
-                                    <path d="M7 2v20"></path>
-                                    <path d="M17 2v20"></path>
-                                    <path d="M2 12h20"></path>
-                                    <path d="M2 7h5"></path>
-                                    <path d="M2 17h5"></path>
-                                    <path d="M17 17h5"></path>
-                                    <path d="M17 7h5"></path>
-                                </svg>
+                                <i class="fas fa-syringe"></i>
                                 Vaccinations
                             </a>
                         </li>
                         
                         <li class="<?php echo $page === 'critical-items' ? 'active' : ''; ?>">
                             <a href="index.php?page=critical-items">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                                    <path d="M16 10a4 4 0 0 1-8 0"></path>
-                                </svg>
+                                <i class="fas fa-box-open"></i>
                                 Critical Items
                             </a>
                         </li>
@@ -147,11 +124,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                         <?php if ($userRole <= 3): // Admin, Government & Merchants ?>
                         <li class="<?php echo $page === 'inventory' ? 'active' : ''; ?>">
                             <a href="index.php?page=inventory">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path>
-                                    <path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path>
-                                    <path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"></path>
-                                </svg>
+                                <i class="fas fa-warehouse"></i>
                                 Inventory
                             </a>
                         </li>
@@ -160,11 +133,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                         <?php if ($userRole <= 3): // Admin, Government & Merchants ?>
                         <li class="<?php echo $page === 'purchases' ? 'active' : ''; ?>">
                             <a href="index.php?page=purchases">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="9" cy="21" r="1"></circle>
-                                    <circle cx="20" cy="21" r="1"></circle>
-                                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                                </svg>
+                                <i class="fas fa-shopping-cart"></i>
                                 Purchases
                             </a>
                         </li>
@@ -173,10 +142,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                         <?php if ($userRole === 4): // Public Users ?>
                         <li class="<?php echo $page === 'find-items' ? 'active' : ''; ?>">
                             <a href="index.php?page=find-items">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="11" cy="11" r="8"></circle>
-                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                </svg>
+                                <i class="fas fa-search-location"></i>
                                 Find Items
                             </a>
                         </li>
@@ -184,10 +150,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                         
                         <li class="<?php echo $page === 'profile' ? 'active' : ''; ?>">
                             <a href="index.php?page=profile">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="12" cy="7" r="4"></circle>
-                                </svg>
+                                <i class="fas fa-user-circle"></i>
                                 My Profile
                             </a>
                         </li>
