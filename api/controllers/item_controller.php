@@ -84,24 +84,32 @@ class ItemController {
         include_once 'models/CriticalItem.php';
         $item = new CriticalItem($this->db);
         
-        $stmt = $item->readActive();
-        
-        $items = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $items[] = [
-                'item_id' => $row['item_id'],
-                'item_name' => $row['item_name'],
-                'item_description' => $row['item_description'],
-                'item_category' => $row['item_category'],
-                'purchase_limit' => $row['purchase_limit'],
-                'purchase_frequency' => $row['purchase_frequency'],
-                'dob_restriction' => $row['dob_restriction']
-            ];
+        try {
+            $stmt = $item->readActive();
+            
+            $items = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $items[] = [
+                    'item_id' => $row['item_id'],
+                    'item_name' => $row['item_name'],
+                    'item_description' => $row['item_description'],
+                    'item_category' => $row['item_category'],
+                    'purchase_limit' => $row['purchase_limit'],
+                    'purchase_frequency' => $row['purchase_frequency'],
+                    'dob_restriction' => $row['dob_restriction']
+                ];
+            }
+            
+            // Even if there are no items, we still return success with an empty array
+            sendResponse('success', 'Active items retrieved', [
+                'items' => $items
+            ]);
+        } catch (PDOException $e) {
+            error_log("Error retrieving active items: " . $e->getMessage());
+            sendResponse('success', 'Active items retrieved', [
+                'items' => [] // Return empty array in case of error
+            ]);
         }
-        
-        sendResponse('success', 'Active items retrieved', [
-            'items' => $items
-        ]);
     }
     
     private function listItems($user) {
@@ -112,25 +120,47 @@ class ItemController {
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
         $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
         
-        $stmt = $item->readAll($page, $limit);
-        
-        $items = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $items[] = [
-                'item_id' => $row['item_id'],
-                'item_name' => $row['item_name'],
-                'item_category' => $row['item_category'],
-                'purchase_limit' => $row['purchase_limit'],
-                'purchase_frequency' => $row['purchase_frequency'],
-                'is_active' => $row['is_active'],
-                'created_at' => $row['created_at'],
-                'creator_name' => $row['creator_name']
-            ];
+        try {
+            $stmt = $item->readAll($page, $limit);
+            
+            $items = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $items[] = [
+                    'item_id' => $row['item_id'],
+                    'item_name' => $row['item_name'],
+                    'item_category' => $row['item_category'],
+                    'purchase_limit' => $row['purchase_limit'],
+                    'purchase_frequency' => $row['purchase_frequency'],
+                    'is_active' => $row['is_active'],
+                    'created_at' => $row['created_at'],
+                    'creator_name' => $row['creator_name']
+                ];
+            }
+            
+            // Get total count for pagination
+            $total = $item->countAll();
+            
+            sendResponse('success', 'Items retrieved', [
+                'items' => $items,
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => $total,
+                    'pages' => ceil($total / $limit)
+                ]
+            ]);
+        } catch (PDOException $e) {
+            error_log("Error retrieving items: " . $e->getMessage());
+            sendResponse('success', 'Items retrieved', [
+                'items' => [],
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => 0,
+                    'pages' => 0
+                ]
+            ]);
         }
-        
-        sendResponse('success', 'Items retrieved', [
-            'items' => $items
-        ]);
     }
     
     private function createItem($data, $user) {

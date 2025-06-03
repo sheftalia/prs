@@ -1,4 +1,8 @@
 <?php
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+error_log("Processing request: " . $_SERVER['REQUEST_URI']);
+
 // Debug incoming request headers
 $allHeaders = getallheaders();
 error_log("All request headers: " . json_encode($allHeaders));
@@ -55,8 +59,20 @@ $endpoint = isset($endpoints[0]) ? strtolower($endpoints[0]) : '';
 $id = isset($endpoints[1]) ? $endpoints[1] : null;
 $action = isset($endpoints[2]) ? $endpoints[2] : null;
 
+// IMPORTANT: Also check for action in query parameters if not in URL path
+if (!$action && isset($_GET['action'])) {
+    $action = $_GET['action'];
+}
+
 // Handle different endpoints
 switch ($endpoint) {
+    case 'stats':
+        error_log("Stats endpoint called with action: " . $action);
+        include_once 'controllers/stats_controller.php';
+        $controller = new StatsController($db);
+        $controller->processRequest($id, $action);
+        break;
+
     case 'auth':
         include_once 'controllers/auth_controller.php';
         $controller = new AuthController($db);
@@ -115,16 +131,11 @@ switch ($endpoint) {
         $controller->processRequest($id, $action);
         break;
         
-    case 'stats':
-        include_once 'controllers/stats_controller.php';
-        $controller = new StatsController($db);
-        $controller->processRequest($id, $action);
-        break;
-        
     default:
-        // API endpoint not found
+        // Add debugging
+        error_log("Unrecognized endpoint: " . $endpoint);
         http_response_code(404);
-        echo json_encode(["message" => "Endpoint not found"]);
+        echo json_encode(["status" => "error", "message" => "Endpoint not found: " . $endpoint]);
         break;
 }
 ?>

@@ -185,5 +185,26 @@ class VaccinationRecord {
         
         return $stmt;
     }
+
+    // Count records for a specific user
+    public function countByUser($userId) {
+        $query = "SELECT COUNT(*) as total FROM " . $this->table_name . " WHERE user_id = ?";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $userId);
+        $stmt->execute();
+        
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row['total'] ?? 0;
+    }
+
+    // Count unverified records
+    public function countUnverified() {
+        $query = "SELECT COUNT(*) as total FROM " . $this->table_name . " WHERE verified = 0";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row['total'] ?? 0;
+    }
 }
 ?>

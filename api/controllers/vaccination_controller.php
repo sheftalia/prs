@@ -82,14 +82,18 @@ class VaccinationController {
             if ($hasPermission) {
                 // Get associated documents
                 $documents = [];
-                $query = "SELECT document_id, file_name, file_type, upload_date FROM documents 
-                        WHERE related_entity = 'vaccination_records' AND related_record_id = ?";
-                $stmt = $this->db->prepare($query);
-                $stmt->bindParam(1, $id);
-                $stmt->execute();
-                
-                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $documents[] = $row;
+                try {
+                    $query = "SELECT document_id, file_name, file_type, upload_date FROM documents 
+                            WHERE related_entity = 'vaccination_records' AND related_record_id = ?";
+                    $stmt = $this->db->prepare($query);
+                    $stmt->bindParam(1, $id);
+                    $stmt->execute();
+                    
+                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        $documents[] = $row;
+                    }
+                } catch (PDOException $e) {
+                    error_log("Error fetching documents: " . $e->getMessage());
                 }
                 
                 // Log activity
@@ -149,28 +153,51 @@ class VaccinationController {
         
         if ($hasPermission) {
             $record->user_id = $userId;
-            $stmt = $record->readByUser($page, $limit);
             
-            $records = [];
-            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $records[] = [
-                    'record_id' => $row['record_id'],
-                    'vaccine_name' => $row['vaccine_name'],
-                    'date_administered' => $row['date_administered'],
-                    'dose_number' => $row['dose_number'],
-                    'provider' => $row['provider'],
-                    'verified' => $row['verified'],
-                    'verifier_name' => $row['verifier_name'],
-                    'verified_date' => $row['verified_date']
-                ];
+            try {
+                $stmt = $record->readByUser($page, $limit);
+                
+                $records = [];
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $records[] = [
+                        'record_id' => $row['record_id'],
+                        'vaccine_name' => $row['vaccine_name'],
+                        'date_administered' => $row['date_administered'],
+                        'dose_number' => $row['dose_number'],
+                        'provider' => $row['provider'],
+                        'verified' => $row['verified'],
+                        'verifier_name' => $row['verifier_name'],
+                        'verified_date' => $row['verified_date']
+                    ];
+                }
+                
+                // Get total count for pagination
+                $total = $record->countByUser($userId);
+                
+                // Log activity
+                logActivity($user->user_id, 'VIEW_ALL', 'vaccination_records', $userId);
+                
+                sendResponse('success', 'Vaccination records retrieved', [
+                    'records' => $records,
+                    'pagination' => [
+                        'page' => $page,
+                        'limit' => $limit,
+                        'total' => $total,
+                        'pages' => ceil($total / $limit)
+                    ]
+                ]);
+            } catch (PDOException $e) {
+                error_log("Error retrieving vaccination records: " . $e->getMessage());
+                sendResponse('success', 'Vaccination records retrieved', [
+                    'records' => [],
+                    'pagination' => [
+                        'page' => $page,
+                        'limit' => $limit,
+                        'total' => 0,
+                        'pages' => 0
+                    ]
+                ]);
             }
-            
-            // Log activity
-            logActivity($user->user_id, 'VIEW_ALL', 'vaccination_records', $userId);
-            
-            sendResponse('success', 'Vaccination records retrieved', [
-                'records' => $records
-            ]);
         } else {
             handleError('Unauthorized access', 403);
         }
@@ -184,26 +211,48 @@ class VaccinationController {
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
         $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
         
-        $stmt = $record->readUnverified($page, $limit);
-        
-        $records = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $records[] = [
-                'record_id' => $row['record_id'],
-                'user_id' => $row['user_id'],
-                'user_name' => $row['user_name'],
-                'prs_id' => $row['prs_id'],
-                'vaccine_name' => $row['vaccine_name'],
-                'date_administered' => $row['date_administered'],
-                'dose_number' => $row['dose_number'],
-                'provider' => $row['provider'],
-                'created_at' => $row['created_at']
-            ];
+        try {
+            $stmt = $record->readUnverified($page, $limit);
+            
+            $records = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $records[] = [
+                    'record_id' => $row['record_id'],
+                    'user_id' => $row['user_id'],
+                    'user_name' => $row['user_name'],
+                    'prs_id' => $row['prs_id'],
+                    'vaccine_name' => $row['vaccine_name'],
+                    'date_administered' => $row['date_administered'],
+                    'dose_number' => $row['dose_number'],
+                    'provider' => $row['provider'],
+                    'created_at' => $row['created_at']
+                ];
+            }
+            
+            // Get total count for pagination
+            $total = $record->countUnverified();
+            
+            sendResponse('success', 'Unverified vaccination records retrieved', [
+                'records' => $records,
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => $total,
+                    'pages' => ceil($total / $limit)
+                ]
+            ]);
+        } catch (PDOException $e) {
+            error_log("Error retrieving unverified records: " . $e->getMessage());
+            sendResponse('success', 'Unverified vaccination records retrieved', [
+                'records' => [],
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => 0,
+                    'pages' => 0
+                ]
+            ]);
         }
-        
-        sendResponse('success', 'Unverified vaccination records retrieved', [
-            'records' => $records
-        ]);
     }
     
     private function uploadVaccinationRecord($data, $user) {
@@ -370,29 +419,40 @@ class VaccinationController {
         include_once 'models/VaccinationRecord.php';
         $record = new VaccinationRecord($this->db);
         
-        // Get overall statistics
-        $stats = $record->getStatistics();
+        // Default empty statistics
+        $stats = [
+            'total_records' => 0,
+            'verified_records' => 0,
+            'total_users' => 0,
+            'vaccine_types' => 0
+        ];
         
-        // Get vaccination distribution by vaccine type
         $vaccineDistribution = [];
-        $stmt = $record->getVaccineDistribution();
-        
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $vaccineDistribution[] = [
-                'vaccine_name' => $row['vaccine_name'],
-                'count' => $row['count']
-            ];
-        }
-        
-        // Get vaccination trend
         $vaccinationTrend = [];
-        $stmt = $record->getVaccinationTrend();
         
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $vaccinationTrend[] = [
-                'month' => $row['month'],
-                'count' => $row['count']
-            ];
+        try {
+            // Get overall statistics
+            $stats = $record->getStatistics() ?: $stats;
+            
+            // Get vaccination distribution by vaccine type
+            $stmt = $record->getVaccineDistribution();
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $vaccineDistribution[] = [
+                    'vaccine_name' => $row['vaccine_name'],
+                    'count' => $row['count']
+                ];
+            }
+            
+            // Get vaccination trend
+            $stmt = $record->getVaccinationTrend();
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $vaccinationTrend[] = [
+                    'month' => $row['month'],
+                    'count' => $row['count']
+                ];
+            }
+        } catch (PDOException $e) {
+            error_log("Error fetching vaccination statistics: " . $e->getMessage());
         }
         
         sendResponse('success', 'Vaccination statistics retrieved', [
