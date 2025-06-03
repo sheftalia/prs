@@ -270,16 +270,29 @@ function loadVaccinationStats() {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                // Update statistics
-                document.getElementById('total-vaccinations').textContent = data.data.stats.total_records;
-                document.getElementById('verified-vaccinations').textContent = data.data.stats.verified_records;
-                document.getElementById('vaccinated-users').textContent = data.data.stats.vaccinated_users;
-                document.getElementById('pending-verification').textContent = 
-                    data.data.stats.total_records - data.data.stats.verified_records;
+                // Use vaccination_stats instead of stats
+                const stats = data.data.vaccination_stats;
                 
-                // Initialize charts
-                setupVaccinationTrendChart(data.data.vaccination_trend);
-                setupVaccineDistributionChart(data.data.vaccine_distribution);
+                if (stats) {
+                    // Update statistics
+                    document.getElementById('total-vaccinations').textContent = stats.total_records || 0;
+                    document.getElementById('verified-vaccinations').textContent = stats.verified_records || 0;
+                    document.getElementById('vaccinated-users').textContent = stats.total_users || 0;
+                    document.getElementById('pending-verification').textContent = 
+                        (stats.total_records || 0) - (stats.verified_records || 0);
+                    
+                    // Initialize charts
+                    if (data.data.vaccination_trend) {
+                        setupVaccinationTrendChart(data.data.vaccination_trend);
+                    }
+                    if (data.data.vaccine_distribution) {
+                        setupVaccineDistributionChart(data.data.vaccine_distribution);
+                    }
+                } else {
+                    console.error('vaccination_stats object is missing in the API response');
+                }
+            } else {
+                console.error('API returned error:', data);
             }
         })
         .catch(error => {
