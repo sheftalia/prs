@@ -204,5 +204,15 @@ class CriticalItem {
         
         return $total_purchased >= $this->purchase_limit;
     }
+
+    // Count total items
+    public function countAll() {
+        $query = "SELECT COUNT(*) as total FROM " . $this->table_name;
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        return $row['total'] ?? 0;
+    }
 }
 ?>

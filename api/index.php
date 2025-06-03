@@ -1,6 +1,8 @@
 <?php
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
+error_reporting(E_ALL);
+ini_set('error_log', __DIR__ . '/api_errors.log'); // log file in api folder
 error_log("Processing request: " . $_SERVER['REQUEST_URI']);
 
 // Debug incoming request headers
