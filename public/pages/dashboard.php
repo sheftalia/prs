@@ -364,10 +364,21 @@ function loadAdminDashboard() {
                 document.getElementById('total-stock').textContent = data.data.inventory_stats.total_stock || 0;
                 
                 // Create charts after stats are loaded
-                createVaccinationTrendChart();
-                createVaccineDistributionChart();
-                createPurchaseTrendChart();
-                createItemDistributionChart();
+                setTimeout(() => {
+                    createVaccinationTrendChart();
+                }, 100);
+
+                setTimeout(() => {
+                    createVaccineDistributionChart();
+                }, 200);
+
+                setTimeout(() => {
+                    createPurchaseTrendChart();
+                }, 300);
+
+                setTimeout(() => {
+                    createItemDistributionChart();
+                }, 400);
             }
         })
         .catch(error => {
@@ -379,10 +390,21 @@ function loadAdminDashboard() {
             document.getElementById('total-stock').textContent = '0';
             
             // Still create charts even if stats fail
-            createVaccinationTrendChart();
-            createVaccineDistributionChart();
-            createPurchaseTrendChart();
-            createItemDistributionChart();
+            setTimeout(() => {
+                createVaccinationTrendChart();
+            }, 100);
+
+            setTimeout(() => {
+                createVaccineDistributionChart();
+            }, 200);
+
+            setTimeout(() => {
+                createPurchaseTrendChart();
+            }, 300);
+
+            setTimeout(() => {
+                createItemDistributionChart();
+            }, 400);
         });
     
     // Load unverified vaccinations
@@ -609,12 +631,21 @@ function createVaccineDistributionChart() {
 
 // Create Purchase Trend Chart (Daily for last 30 days)
 function createPurchaseTrendChart() {
+    console.log('createPurchaseTrendChart called');
     const ctx = document.getElementById('purchase-trend-chart');
-    if (!ctx) return;
+    if (!ctx) {
+        console.log('Canvas not found');
+        return;
+    }
+    
+    // Use Chart.js built-in method to check for existing chart
+    const existingChart = Chart.getChart(ctx);
+    console.log('Canvas found, existing chart:', existingChart);
     
     // Destroy existing chart if it exists
-    if (chartInstances['purchase-trend-chart']) {
-        chartInstances['purchase-trend-chart'].destroy();
+    if (existingChart) {
+        console.log('Destroying existing chart');
+        existingChart.destroy();
     }
     
     // Fetch purchase trend data
@@ -649,22 +680,82 @@ function createPurchaseTrendChart() {
                     itemCounts = [0];
                 }
                 
-                // Create the chart
+                // Create the chart and store in our tracking object
+                console.log('About to create chart...');
+                try {
+                    chartInstances['purchase-trend-chart'] = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Transactions',
+                                    data: transactionCounts,
+                                    backgroundColor: '#005eb8', // NHS Blue
+                                    borderWidth: 0
+                                },
+                                {
+                                    label: 'Items Sold',
+                                    data: itemCounts,
+                                    backgroundColor: '#41b6e6', // Light Blue
+                                    borderWidth: 0
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Purchase Trend (Last 30 Days)'
+                                },
+                                legend: {
+                                    display: true,
+                                    position: 'top'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        precision: 0
+                                    }
+                                },
+                                x: {
+                                    ticks: {
+                                        maxRotation: 45
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    console.log('Chart created successfully:', chartInstances['purchase-trend-chart']);
+                } catch (error) {
+                    console.error('Error creating chart:', error);
+                    throw error;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching purchase trend data:', error);
+            // Create empty chart on error
+            try {
                 chartInstances['purchase-trend-chart'] = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: labels,
+                        labels: ['No Data'],
                         datasets: [
                             {
                                 label: 'Transactions',
-                                data: transactionCounts,
-                                backgroundColor: '#005eb8', // NHS Blue
+                                data: [0],
+                                backgroundColor: '#005eb8',
                                 borderWidth: 0
                             },
                             {
                                 label: 'Items Sold',
-                                data: itemCounts,
-                                backgroundColor: '#41b6e6', // Light Blue
+                                data: [0],
+                                backgroundColor: '#41b6e6',
                                 borderWidth: 0
                             }
                         ]
@@ -673,67 +764,18 @@ function createPurchaseTrendChart() {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                            title: {
-                                display: true,
-                                text: 'Purchase Trend (Last 30 Days)'
-                            },
-                            legend: {
-                                display: true,
-                                position: 'top'
-                            }
+                            title: { display: true, text: 'Purchase Trend (No Data)' },
+                            legend: { display: true, position: 'top' }
                         },
                         scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    precision: 0
-                                }
-                            },
-                            x: {
-                                ticks: {
-                                    maxRotation: 45
-                                }
-                            }
+                            y: { beginAtZero: true, ticks: { precision: 0 } },
+                            x: { ticks: { maxRotation: 45 } }
                         }
                     }
                 });
+            } catch (fallbackError) {
+                console.error('Error creating fallback chart:', fallbackError);
             }
-        })
-        .catch(error => {
-            console.error('Error fetching purchase trend data:', error);
-            // Create empty chart on error
-            chartInstances['purchase-trend-chart'] = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['No Data'],
-                    datasets: [
-                        {
-                            label: 'Transactions',
-                            data: [0],
-                            backgroundColor: '#005eb8',
-                            borderWidth: 0
-                        },
-                        {
-                            label: 'Items Sold',
-                            data: [0],
-                            backgroundColor: '#41b6e6',
-                            borderWidth: 0
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: { display: true, text: 'Purchase Trend (No Data)' },
-                        legend: { display: true, position: 'top' }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { precision: 0 } },
-                        x: { ticks: { maxRotation: 45 } }
-                    }
-                }
-            });
         });
 }
 
