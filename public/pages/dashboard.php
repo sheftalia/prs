@@ -1,25 +1,4 @@
 <?php
-// Temporary debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-?>
-<script>
-// Debug API responses
-const originalFetch = window.fetch;
-window.fetch = function(...args) {
-    return originalFetch(...args)
-        .then(response => {
-            console.log(`Fetch to ${args[0]}:`, response.clone());
-            return response;
-        })
-        .catch(error => {
-            console.error(`Fetch error for ${args[0]}:`, error);
-            throw error;
-        });
-};
-</script>
-
-<?php
 // Get user role for role-specific content
 $userRole = $_SESSION['user']['role_id'];
 ?>
@@ -224,58 +203,6 @@ $userRole = $_SESSION['user']['role_id'];
                 <div class="stat-label">Low Stock Items</div>
             </div>
         </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Your Locations</h3>
-                <a href="index.php?page=inventory" class="btn btn-primary btn-sm">Manage Inventory</a>
-            </div>
-            <div class="card-body">
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Location Name</th>
-                                <th>Address</th>
-                                <th>Items in Stock</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="merchant-locations">
-                            <tr>
-                                <td colspan="4" class="text-center">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Recent Sales</h3>
-                <a href="index.php?page=purchases" class="btn btn-primary btn-sm">View All</a>
-            </div>
-            <div class="card-body">
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Item</th>
-                                <th>Quantity</th>
-                                <th>Location</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recent-sales">
-                            <tr>
-                                <td colspan="4" class="text-center">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -416,39 +343,223 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Load Admin/Government Dashboard
 function loadAdminDashboard() {
+    console.log('Loading admin dashboard...');
+    
     // Load system statistics
-    fetch('/prs/api/stats/dashboard')
-        .then(response => response.json())
+    fetch('/prs/api/stats?action=dashboard')
+        .then(response => {
+            console.log('Stats response:', response);
+            return response.json();
+        })
         .then(data => {
+            console.log('Stats data:', data);
             if (data.status === 'success') {
                 // Update statistics
-                document.getElementById('total-users').textContent = data.data.user_stats.total_users;
-                document.getElementById('total-vaccinations').textContent = data.data.vaccination_stats.total_records;
-                document.getElementById('total-items-sold').textContent = data.data.purchase_stats.total_items_sold;
-                document.getElementById('total-stock').textContent = data.data.inventory_stats.total_stock;
+                document.getElementById('total-users').textContent = data.data.user_stats.total_users || 0;
+                document.getElementById('total-vaccinations').textContent = data.data.vaccination_stats.total_records || 0;
+                document.getElementById('total-items-sold').textContent = data.data.purchase_stats.total_items_sold || 0;
+                document.getElementById('total-stock').textContent = data.data.inventory_stats.total_stock || 0;
+                
+                // Create charts after stats are loaded
+                createVaccinationTrendChart();
+                createVaccineDistributionChart();
+                createPurchaseTrendChart();
+                createItemDistributionChart();
             }
         })
         .catch(error => {
             console.error('Error loading dashboard statistics:', error);
+            // Set default values
+            document.getElementById('total-users').textContent = '0';
+            document.getElementById('total-vaccinations').textContent = '0';
+            document.getElementById('total-items-sold').textContent = '0';
+            document.getElementById('total-stock').textContent = '0';
         });
     
     // Load unverified vaccinations
-    fetch('/prs/api/vaccinations?action=unverified')
+    loadUnverifiedVaccinations();
+    
+    // Load low stock items
+    loadLowStockItems();
+}
+
+// Create Vaccination Trend Chart
+function createVaccinationTrendChart() {
+    const ctx = document.getElementById('vaccination-trend-chart');
+    if (!ctx) return;
+    
+    // Sample data for now
+    const sampleData = {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        datasets: [{
+            label: 'Vaccinations',
+            data: [10, 25, 40, 35, 50, 45],
+            borderColor: '#005eb8',
+            backgroundColor: 'rgba(0, 94, 184, 0.1)',
+            borderWidth: 2,
+            tension: 0.4,
+            fill: true
+        }]
+    };
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: sampleData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Vaccination Trend'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Create Vaccine Distribution Chart
+function createVaccineDistributionChart() {
+    const ctx = document.getElementById('vaccine-distribution-chart');
+    if (!ctx) return;
+    
+    // Sample data
+    const sampleData = {
+        labels: ['COVID-19 AstraZeneca', 'COVID-19 Pfizer', 'Flu Vaccine'],
+        datasets: [{
+            data: [45, 30, 25],
+            backgroundColor: ['#005eb8', '#41b6e6', '#330072'],
+            borderWidth: 1,
+            borderColor: '#ffffff'
+        }]
+    };
+    
+    new Chart(ctx, {
+        type: 'pie',
+        data: sampleData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                title: {
+                    display: true,
+                    text: 'Vaccine Distribution'
+                }
+            }
+        }
+    });
+}
+
+// Create Purchase Trend Chart
+function createPurchaseTrendChart() {
+    const ctx = document.getElementById('purchase-trend-chart');
+    if (!ctx) return;
+    
+    // Sample data
+    const sampleData = {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [
+            {
+                label: 'Transactions',
+                data: [12, 19, 15, 25, 22, 18, 10],
+                backgroundColor: '#005eb8',
+                borderWidth: 0
+            },
+            {
+                label: 'Items',
+                data: [15, 25, 20, 35, 30, 25, 15],
+                backgroundColor: '#41b6e6',
+                borderWidth: 0
+            }
+        ]
+    };
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: sampleData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Purchase Trend'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Create Item Distribution Chart
+function createItemDistributionChart() {
+    const ctx = document.getElementById('item-distribution-chart');
+    if (!ctx) return;
+    
+    // Sample data
+    const sampleData = {
+        labels: ['PPE', 'Hygiene Products', 'Medication', 'Testing Kits'],
+        datasets: [{
+            data: [35, 25, 20, 20],
+            backgroundColor: ['#005eb8', '#330072', '#00a499', '#78be20'],
+            borderWidth: 1,
+            borderColor: '#ffffff'
+        }]
+    };
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: sampleData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                title: {
+                    display: true,
+                    text: 'Inventory by Category'
+                }
+            }
+        }
+    });
+}
+
+// Load unverified vaccinations
+function loadUnverifiedVaccinations() {
+    fetch('/prs/api/vaccinations?action=unverified&limit=5')
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success') {
-                const tbody = document.getElementById('unverified-vaccinations');
-                
-                if (data.data.records.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center">No unverified vaccinations</td></tr>';
-                    return;
-                }
-                
+            console.log('Unverified vaccinations:', data);
+            const tbody = document.getElementById('unverified-vaccinations');
+            
+            if (data.status === 'success' && data.data.records.length > 0) {
                 tbody.innerHTML = '';
                 
-                data.data.records.slice(0, 5).forEach(record => {
+                data.data.records.forEach(record => {
                     const row = document.createElement('tr');
-                    
                     row.innerHTML = `
                         <td>${record.user_name} (${record.prs_id})</td>
                         <td>${record.vaccine_name}</td>
@@ -459,7 +570,6 @@ function loadAdminDashboard() {
                             </button>
                         </td>
                     `;
-                    
                     tbody.appendChild(row);
                 });
                 
@@ -471,6 +581,8 @@ function loadAdminDashboard() {
                         verifyVaccinationRecord(recordId, this);
                     });
                 });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No unverified vaccinations</td></tr>';
             }
         })
         .catch(error => {
@@ -478,25 +590,23 @@ function loadAdminDashboard() {
             document.getElementById('unverified-vaccinations').innerHTML = 
                 '<tr><td colspan="4" class="text-center">Failed to load data</td></tr>';
         });
-    
-    // Load low stock items
-    fetch('/prs/api/inventory?action=low-stock')
+}
+
+// Load low stock items
+function loadLowStockItems() {
+    fetch('/prs/api/inventory?action=low-stock&threshold=20')
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success') {
-                const tbody = document.getElementById('low-stock-items');
-                
-                if (data.data.items.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center">No low stock items</td></tr>';
-                    return;
-                }
-                
+            console.log('Low stock items:', data);
+            const tbody = document.getElementById('low-stock-items');
+            
+            if (data.status === 'success' && data.data.items.length > 0) {
                 tbody.innerHTML = '';
                 
                 data.data.items.slice(0, 5).forEach(item => {
                     const row = document.createElement('tr');
                     
-                    // Determine status based on quantity
+                    // Determine status
                     let status = '';
                     let statusClass = '';
                     
@@ -513,13 +623,15 @@ function loadAdminDashboard() {
                     
                     row.innerHTML = `
                         <td>${item.item_name}</td>
-                        <td>${item.location_name} (${item.business_name})</td>
+                        <td>${item.location_name}</td>
                         <td>${item.quantity_available}</td>
                         <td><span class="badge ${statusClass}">${status}</span></td>
                     `;
                     
                     tbody.appendChild(row);
                 });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No low stock items</td></tr>';
             }
         })
         .catch(error => {
@@ -529,152 +641,35 @@ function loadAdminDashboard() {
         });
 }
 
-// Load Merchant Dashboard
-function loadMerchantDashboard() {
-    // Load merchant statistics
-    const userId = <?php echo $_SESSION['user']['user_id']; ?>;
-    
-    // Fetch merchant locations
-    fetch(`/prs/api/merchant/locations?user_id=${userId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const locations = data.data.locations;
-                
-                // Update statistics
-                document.getElementById('merchant-total-items').textContent = data.data.summary.total_items || 0;
-                document.getElementById('merchant-total-sales').textContent = data.data.summary.total_sales || 0;
-                document.getElementById('merchant-total-customers').textContent = data.data.summary.unique_customers || 0;
-                document.getElementById('merchant-low-stock').textContent = data.data.summary.low_stock_items || 0;
-                
-                // Update locations table
-                const tbody = document.getElementById('merchant-locations');
-                
-                if (locations.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center">No locations found</td></tr>';
-                    return;
-                }
-                
-                tbody.innerHTML = '';
-                
-                locations.forEach(location => {
-                    const row = document.createElement('tr');
-                    
-                    row.innerHTML = `
-                        <td>${location.location_name}</td>
-                        <td>${location.address_line1}, ${location.city}, ${location.postal_code}</td>
-                        <td>${location.items_in_stock || 0}</td>
-                        <td>
-                            <a href="index.php?page=inventory&location_id=${location.location_id}" class="btn btn-primary btn-sm">
-                                Manage
-                            </a>
-                        </td>
-                    `;
-                    
-                    tbody.appendChild(row);
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error loading merchant locations:', error);
-            document.getElementById('merchant-locations').innerHTML = 
-                '<tr><td colspan="4" class="text-center">Failed to load data</td></tr>';
-        });
-    
-    // Fetch recent sales
-    fetch(`/prs/api/merchant/sales?user_id=${userId}&limit=5`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const sales = data.data.sales;
-                const tbody = document.getElementById('recent-sales');
-                
-                if (sales.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center">No recent sales</td></tr>';
-                    return;
-                }
-                
-                tbody.innerHTML = '';
-                
-                sales.forEach(sale => {
-                    const row = document.createElement('tr');
-                    
-                    row.innerHTML = `
-                        <td>${sale.item_name}</td>
-                        <td>${sale.quantity}</td>
-                        <td>${sale.location_name}</td>
-                        <td>${new Date(sale.purchase_date).toLocaleString()}</td>
-                    `;
-                    
-                    tbody.appendChild(row);
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error loading recent sales:', error);
-            document.getElementById('recent-sales').innerHTML = 
-                '<tr><td colspan="4" class="text-center">Failed to load data</td></tr>';
-        });
-}
-
 // Load Public User Dashboard
 function loadPublicDashboard() {
-    const userId = <?php echo $_SESSION['user']['user_id']; ?>;
-    
-    // Fetch user statistics
-    fetch(`/prs/api/users/profile`)
+    // Load user vaccinations
+    fetch('/prs/api/vaccinations?action=user&limit=5')
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success') {
-                // Update statistics
-                document.getElementById('user-vaccination-count').textContent = data.data.vaccination_count || 0;
-                document.getElementById('user-family-count').textContent = data.data.family_members?.length || 0;
-                document.getElementById('user-purchase-count').textContent = data.data.purchase_count || 0;
-                document.getElementById('user-verified-count').textContent = data.data.verified_count || 0;
-            }
-        })
-        .catch(error => {
-            console.error('Error loading user statistics:', error);
-        });
-    
-    // Fetch user vaccinations
-    fetch(`/prs/api/vaccinations?action=user`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const records = data.data.records;
-                const tbody = document.getElementById('user-vaccinations');
-                
-                if (records.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center">No vaccination records found</td></tr>';
-                    return;
-                }
-                
+            const tbody = document.getElementById('user-vaccinations');
+            
+            if (data.status === 'success' && data.data.records.length > 0) {
                 tbody.innerHTML = '';
                 
-                records.slice(0, 5).forEach(record => {
+                data.data.records.forEach(record => {
                     const row = document.createElement('tr');
                     
-                    let status = '';
-                    let statusClass = '';
-                    
-                    if (record.verified) {
-                        status = 'Verified';
-                        statusClass = 'badge-success';
-                    } else {
-                        status = 'Pending';
-                        statusClass = 'badge-warning';
-                    }
+                    let status = record.verified ? 
+                        '<span class="badge badge-success">Verified</span>' : 
+                        '<span class="badge badge-warning">Pending</span>';
                     
                     row.innerHTML = `
                         <td>${record.vaccine_name}</td>
                         <td>${record.dose_number}</td>
                         <td>${new Date(record.date_administered).toLocaleDateString()}</td>
-                        <td><span class="badge ${statusClass}">${status}</span></td>
+                        <td>${status}</td>
                     `;
                     
                     tbody.appendChild(row);
                 });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No vaccination records found</td></tr>';
             }
         })
         .catch(error => {
@@ -683,22 +678,16 @@ function loadPublicDashboard() {
                 '<tr><td colspan="4" class="text-center">Failed to load data</td></tr>';
         });
     
-    // Fetch user purchases
-    fetch(`/prs/api/purchases?action=history`)
+    // Load user purchases
+    fetch('/prs/api/purchases?action=history&limit=5')
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success') {
-                const purchases = data.data.purchases;
-                const tbody = document.getElementById('user-purchases');
-                
-                if (purchases.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center">No purchase history found</td></tr>';
-                    return;
-                }
-                
+            const tbody = document.getElementById('user-purchases');
+            
+            if (data.status === 'success' && data.data.purchases.length > 0) {
                 tbody.innerHTML = '';
                 
-                purchases.slice(0, 5).forEach(purchase => {
+                data.data.purchases.forEach(purchase => {
                     const row = document.createElement('tr');
                     
                     row.innerHTML = `
@@ -710,6 +699,8 @@ function loadPublicDashboard() {
                     
                     tbody.appendChild(row);
                 });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No purchase history found</td></tr>';
             }
         })
         .catch(error => {
@@ -718,25 +709,20 @@ function loadPublicDashboard() {
                 '<tr><td colspan="4" class="text-center">Failed to load data</td></tr>';
         });
     
-    // Fetch critical items
+    // Load critical items
     fetch('/prs/api/items?action=active')
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success') {
-                const items = data.data.items;
-                const container = document.getElementById('critical-items-list');
-                
-                if (items.length === 0) {
-                    container.innerHTML = '<div class="text-center">No critical items found</div>';
-                    return;
-                }
-                
+            const container = document.getElementById('critical-items-list');
+            
+            if (data.status === 'success' && data.data.items.length > 0) {
                 container.innerHTML = '';
                 
                 // Display only up to 4 items
-                items.slice(0, 4).forEach(item => {
+                data.data.items.slice(0, 4).forEach(item => {
                     const itemCard = document.createElement('div');
                     itemCard.className = 'critical-item-card';
+                    itemCard.style.cssText = 'border: 1px solid #ddd; padding: 15px; margin: 10px; border-radius: 8px; background: white;';
                     
                     itemCard.innerHTML = `
                         <h4>${item.item_name}</h4>
@@ -748,6 +734,8 @@ function loadPublicDashboard() {
                     
                     container.appendChild(itemCard);
                 });
+            } else {
+                container.innerHTML = '<div class="text-center">No critical items found</div>';
             }
         })
         .catch(error => {
@@ -755,6 +743,12 @@ function loadPublicDashboard() {
             document.getElementById('critical-items-list').innerHTML = 
                 '<div class="text-center">Failed to load critical items</div>';
         });
+    
+    // Set default values for stats
+    document.getElementById('user-vaccination-count').textContent = '0';
+    document.getElementById('user-family-count').textContent = '0';
+    document.getElementById('user-purchase-count').textContent = '0';
+    document.getElementById('user-verified-count').textContent = '0';
 }
 
 // Verify Vaccination Record
