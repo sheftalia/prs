@@ -309,92 +309,6 @@ function loadVaccinationStats() {
         });
 }
 
-// Setup vaccination trend chart
-function setupVaccinationTrendChart(trendData) {
-    const ctx = document.getElementById('vaccination-trend-chart').getContext('2d');
-    
-    // Prepare data
-    const labels = trendData.map(item => item.month);
-    const data = trendData.map(item => item.count);
-    
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Vaccinations',
-                data: data,
-                borderColor: '#005eb8',
-                backgroundColor: 'rgba(0, 94, 184, 0.1)',
-                borderWidth: 2,
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Vaccination Trend by Month'
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Setup vaccine distribution chart
-function setupVaccineDistributionChart(distributionData) {
-    const ctx = document.getElementById('vaccine-distribution-chart').getContext('2d');
-    
-    // Prepare data
-    const labels = distributionData.map(item => item.vaccine_name);
-    const data = distributionData.map(item => item.count);
-    const backgroundColors = [
-        '#005eb8', // NHS Blue
-        '#41b6e6', // Light Blue
-        '#330072', // Purple
-        '#ae2573', // Pink
-        '#00a499', // Teal
-        '#78be20', // Green
-        '#fae100', // Yellow
-        '#ed8b00', // Orange
-        '#d5281b'  // Red
-    ];
-    
-    new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: backgroundColors.slice(0, labels.length),
-                borderWidth: 1,
-                borderColor: '#ffffff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Vaccine Distribution'
-                }
-            }
-        }
-    });
-}
-
 // Load verification queue
 function loadVerificationQueue(page = 1) {
     fetch(`/prs/api/vaccinations?action=unverified&page=${page}&limit=10`)
@@ -481,16 +395,16 @@ function loadVerifiedRecords(page = 1) {
                         <td>${new Date(record.date_administered).toLocaleDateString()}</td>
                         <td>${record.verifier_name}</td>
                         <td>
-                            <button class="btn btn-primary btn-sm view-btn" data-record-id="${record.record_id}">View</button>
+                            <button class="btn btn-primary btn-sm view-verified-btn" data-record-id="${record.record_id}">View</button>
                         </td>
                     `;
                     
                     tbody.appendChild(row);
                 });
                 
-                // Add event listeners to view buttons
-                const viewButtons = document.querySelectorAll('#verified-records .view-btn');
-                viewButtons.forEach(button => {
+                // Add event listeners to view buttons for verified records
+                const viewVerifiedButtons = document.querySelectorAll('.view-verified-btn');
+                viewVerifiedButtons.forEach(button => {
                     button.addEventListener('click', function() {
                         const recordId = this.getAttribute('data-record-id');
                         viewVaccinationRecord(recordId);

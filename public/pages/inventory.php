@@ -146,18 +146,14 @@ function loadLocationInventory(locationId) {
             console.log('Location inventory response:', data);
             
             if (data.status === 'success') {
-                // The API returns location and inventory data
+                // The API returns items array, not inventory
                 let locationName = 'Selected Location';
+                const inventory = data.data.items || []; // Changed from data.inventory to data.items
                 
-                // Try to get location name from the response or inventory items
-                if (data.data.location && data.data.location.location_name) {
-                    locationName = data.data.location.location_name;
-                } else if (data.data.inventory && data.data.inventory.length > 0) {
-                    // If location data is not available, try from first inventory item
-                    locationName = data.data.inventory[0].location_name || 'Selected Location';
+                // Try to get location name from first inventory item
+                if (inventory.length > 0 && inventory[0].location_name) {
+                    locationName = inventory[0].location_name;
                 }
-                
-                const inventory = data.data.inventory || [];
                 
                 // Update location name
                 document.getElementById('selected-location-name').textContent = locationName;
