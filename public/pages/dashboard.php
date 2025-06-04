@@ -969,73 +969,125 @@ function loadLowStockItems() {
 
 // Load Public User Dashboard
 function loadPublicDashboard() {
-    // Load user vaccinations
-    fetch('/prs/api/vaccinations?action=user&limit=5')
+    console.log('Loading public user dashboard...');
+    
+    // Load user profile to get family count
+    fetch('/prs/api/users/profile')
         .then(response => response.json())
         .then(data => {
-            const tbody = document.getElementById('user-vaccinations');
-            
-            if (data.status === 'success' && data.data.records.length > 0) {
-                tbody.innerHTML = '';
+            if (data.status === 'success') {
+                const familyCount = data.data.family_members ? data.data.family_members.length : 0;
+                document.getElementById('user-family-count').textContent = familyCount;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading profile:', error);
+            document.getElementById('user-family-count').textContent = '0';
+        });
+    
+    // Load user vaccinations count
+    fetch('/prs/api/vaccinations?action=user&limit=1000')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const records = data.data.records || [];
+                const verifiedCount = records.filter(record => record.verified).length;
                 
-                data.data.records.forEach(record => {
-                    const row = document.createElement('tr');
-                    
-                    let status = record.verified ? 
-                        '<span class="badge badge-success">Verified</span>' : 
-                        '<span class="badge badge-warning">Pending</span>';
-                    
-                    row.innerHTML = `
-                        <td>${record.vaccine_name}</td>
-                        <td>${record.dose_number}</td>
-                        <td>${new Date(record.date_administered).toLocaleDateString()}</td>
-                        <td>${status}</td>
-                    `;
-                    
-                    tbody.appendChild(row);
-                });
+                document.getElementById('user-vaccination-count').textContent = records.length;
+                document.getElementById('user-verified-count').textContent = verifiedCount;
+                
+                // Load recent vaccinations for display
+                loadUserVaccinationsForDisplay(records.slice(0, 5));
             } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No vaccination records found</td></tr>';
+                document.getElementById('user-vaccination-count').textContent = '0';
+                document.getElementById('user-verified-count').textContent = '0';
             }
         })
         .catch(error => {
             console.error('Error loading user vaccinations:', error);
-            document.getElementById('user-vaccinations').innerHTML = 
-                '<tr><td colspan="4" class="text-center">Failed to load data</td></tr>';
+            document.getElementById('user-vaccination-count').textContent = '0';
+            document.getElementById('user-verified-count').textContent = '0';
         });
     
-    // Load user purchases
-    fetch('/prs/api/purchases?action=history&limit=5')
+    // Load user purchases count
+    fetch('/prs/api/purchases?action=history&limit=1000')
         .then(response => response.json())
         .then(data => {
-            const tbody = document.getElementById('user-purchases');
-            
-            if (data.status === 'success' && data.data.purchases.length > 0) {
-                tbody.innerHTML = '';
+            if (data.status === 'success') {
+                const purchases = data.data.purchases || [];
+                document.getElementById('user-purchase-count').textContent = purchases.length;
                 
-                data.data.purchases.forEach(purchase => {
-                    const row = document.createElement('tr');
-                    
-                    row.innerHTML = `
-                        <td>${purchase.item_name}</td>
-                        <td>${purchase.quantity}</td>
-                        <td>${purchase.location_name}</td>
-                        <td>${new Date(purchase.purchase_date).toLocaleString()}</td>
-                    `;
-                    
-                    tbody.appendChild(row);
-                });
+                // Load recent purchases for display
+                loadUserPurchasesForDisplay(purchases.slice(0, 5));
             } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No purchase history found</td></tr>';
+                document.getElementById('user-purchase-count').textContent = '0';
             }
         })
         .catch(error => {
             console.error('Error loading user purchases:', error);
-            document.getElementById('user-purchases').innerHTML = 
-                '<tr><td colspan="4" class="text-center">Failed to load data</td></tr>';
+            document.getElementById('user-purchase-count').textContent = '0';
         });
     
     // Load critical items
+    loadCriticalItemsForDisplay();
+}
+
+// Helper function to display user vaccinations
+function loadUserVaccinationsForDisplay(records) {
+    const tbody = document.getElementById('user-vaccinations');
+    
+    if (records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center">No vaccination records found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    records.forEach(record => {
+        const row = document.createElement('tr');
+        
+        let status = record.verified ? 
+            '<span class="badge badge-success">Verified</span>' : 
+            '<span class="badge badge-warning">Pending</span>';
+        
+        row.innerHTML = `
+            <td>${record.vaccine_name}</td>
+            <td>${record.dose_number}</td>
+            <td>${new Date(record.date_administered).toLocaleDateString()}</td>
+            <td>${status}</td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Helper function to display user purchases
+function loadUserPurchasesForDisplay(purchases) {
+    const tbody = document.getElementById('user-purchases');
+    
+    if (purchases.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center">No purchase history found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    purchases.forEach(purchase => {
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td>${purchase.item_name}</td>
+            <td>${purchase.quantity}</td>
+            <td>${purchase.location_name}</td>
+            <td>${new Date(purchase.purchase_date).toLocaleString()}</td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Helper function to load critical items
+function loadCriticalItemsForDisplay() {
     fetch('/prs/api/items?action=active')
         .then(response => response.json())
         .then(data => {
@@ -1044,7 +1096,7 @@ function loadPublicDashboard() {
             if (data.status === 'success' && data.data.items.length > 0) {
                 container.innerHTML = '';
                 
-                // Display only up to 4 items
+                // Display only up to 4 items with proper dark mode support
                 data.data.items.slice(0, 4).forEach(item => {
                     const itemCard = document.createElement('div');
                     itemCard.className = 'critical-item-card';
@@ -1069,12 +1121,6 @@ function loadPublicDashboard() {
             document.getElementById('critical-items-list').innerHTML = 
                 '<div class="text-center">Failed to load critical items</div>';
         });
-    
-    // Set default values for stats
-    document.getElementById('user-vaccination-count').textContent = '0';
-    document.getElementById('user-family-count').textContent = '0';
-    document.getElementById('user-purchase-count').textContent = '0';
-    document.getElementById('user-verified-count').textContent = '0';
 }
 
 // Verify Vaccination Record
