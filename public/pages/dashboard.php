@@ -1048,7 +1048,7 @@ function loadPublicDashboard() {
                 data.data.items.slice(0, 4).forEach(item => {
                     const itemCard = document.createElement('div');
                     itemCard.className = 'critical-item-card';
-                    itemCard.style.cssText = 'border: 1px solid #ddd; padding: 15px; margin: 10px; border-radius: 8px; background: white;';
+                    itemCard.style.cssText = 'border: 1px solid var(--border-color); padding: 15px; margin: 10px; border-radius: 8px; background: var(--surface-color); color: var(--text-color);';
                     
                     itemCard.innerHTML = `
                         <h4>${item.item_name}</h4>
