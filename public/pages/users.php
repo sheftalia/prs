@@ -35,7 +35,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Load users list
-    fetch('/prs/api/users')
+    fetch('/prs/api/users?limit=1000') // Set a high limit to get all users
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
