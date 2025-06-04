@@ -286,7 +286,7 @@ function loadVaccinationStats() {
                     // Update statistics
                     document.getElementById('total-vaccinations').textContent = stats.total_records || 0;
                     document.getElementById('verified-vaccinations').textContent = stats.verified_records || 0;
-                    document.getElementById('vaccinated-users').textContent = stats.total_users || 0;
+                    document.getElementById('vaccinated-users').textContent = stats.vaccinated_users || 0;
                     document.getElementById('pending-verification').textContent = 
                         (stats.total_records || 0) - (stats.verified_records || 0);
                     
