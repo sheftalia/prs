@@ -324,6 +324,9 @@ $userRole = $_SESSION['user']['role_id'];
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Store chart instances to prevent canvas reuse errors
+let chartInstances = {};
+
 // Load dashboard data
 document.addEventListener('DOMContentLoaded', function() {
     // Load statistics based on user role
@@ -374,6 +377,12 @@ function loadAdminDashboard() {
             document.getElementById('total-vaccinations').textContent = '0';
             document.getElementById('total-items-sold').textContent = '0';
             document.getElementById('total-stock').textContent = '0';
+            
+            // Still create charts even if stats fail
+            createVaccinationTrendChart();
+            createVaccineDistributionChart();
+            createPurchaseTrendChart();
+            createItemDistributionChart();
         });
     
     // Load unverified vaccinations
@@ -383,168 +392,443 @@ function loadAdminDashboard() {
     loadLowStockItems();
 }
 
-// Create Vaccination Trend Chart
+// Create Vaccination Trend Chart (Monthly data for 2023)
 function createVaccinationTrendChart() {
     const ctx = document.getElementById('vaccination-trend-chart');
     if (!ctx) return;
     
-    // Sample data for now
-    const sampleData = {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-        datasets: [{
-            label: 'Vaccinations',
-            data: [10, 25, 40, 35, 50, 45],
-            borderColor: '#005eb8',
-            backgroundColor: 'rgba(0, 94, 184, 0.1)',
-            borderWidth: 2,
-            tension: 0.4,
-            fill: true
-        }]
-    };
+    // Destroy existing chart if it exists
+    if (chartInstances['vaccination-trend-chart']) {
+        chartInstances['vaccination-trend-chart'].destroy();
+    }
     
-    new Chart(ctx, {
-        type: 'line',
-        data: sampleData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                title: {
-                    display: true,
-                    text: 'Vaccination Trend'
+    // Fetch vaccination trend data for 2023
+    fetch('/prs/api/stats?action=vaccinations')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Vaccination trend data:', data);
+            
+            if (data.status === 'success' && data.data.vaccination_trend) {
+                const trend = data.data.vaccination_trend;
+                
+                // Filter for 2023 data and sort by month
+                const trend2023 = trend.filter(item => item.month.startsWith('2023')).sort();
+                
+                let labels, values;
+                
+                if (trend2023.length > 0) {
+                    // Use real data
+                    labels = trend2023.map(item => {
+                        const [year, month] = item.month.split('-');
+                        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        return monthNames[parseInt(month) - 1];
+                    });
+                    values = trend2023.map(item => parseInt(item.count));
+                } else {
+                    // No data for 2023, show empty chart with month labels
+                    labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    values = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
                 }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
+                
+                // Create the chart
+                chartInstances['vaccination-trend-chart'] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Vaccinations',
+                            data: values,
+                            borderColor: '#005eb8',
+                            backgroundColor: 'rgba(0, 94, 184, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Vaccination Trend 2023'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
+                            }
+                        }
                     }
-                }
+                });
             }
-        }
-    });
+        })
+        .catch(error => {
+            console.error('Error fetching vaccination trend data:', error);
+            // Create empty chart on error
+            chartInstances['vaccination-trend-chart'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [{
+                        label: 'Vaccinations',
+                        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        borderColor: '#005eb8',
+                        backgroundColor: 'rgba(0, 94, 184, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: 'Vaccination Trend 2023 (No Data)' }
+                    },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        });
 }
 
-// Create Vaccine Distribution Chart
+// Create Vaccine Distribution Chart (COVID-19 vaccines only)
 function createVaccineDistributionChart() {
     const ctx = document.getElementById('vaccine-distribution-chart');
     if (!ctx) return;
     
-    // Sample data
-    const sampleData = {
-        labels: ['COVID-19 AstraZeneca', 'COVID-19 Pfizer', 'Flu Vaccine'],
-        datasets: [{
-            data: [45, 30, 25],
-            backgroundColor: ['#005eb8', '#41b6e6', '#330072'],
-            borderWidth: 1,
-            borderColor: '#ffffff'
-        }]
-    };
+    // Destroy existing chart if it exists
+    if (chartInstances['vaccine-distribution-chart']) {
+        chartInstances['vaccine-distribution-chart'].destroy();
+    }
     
-    new Chart(ctx, {
-        type: 'pie',
-        data: sampleData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right'
-                },
-                title: {
-                    display: true,
-                    text: 'Vaccine Distribution'
+    // Fetch vaccine distribution data
+    fetch('/prs/api/stats?action=vaccinations')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Vaccine distribution data:', data);
+            
+            if (data.status === 'success' && data.data.vaccine_distribution) {
+                const distribution = data.data.vaccine_distribution;
+                
+                // Filter for COVID-19 vaccines only and shorten labels
+                const covidVaccines = distribution.filter(item => 
+                    item.vaccine_name.includes('COVID-19')
+                ).map(item => {
+                    let shortName = item.vaccine_name;
+                    if (shortName.includes('AstraZeneca')) shortName = 'AstraZeneca';
+                    else if (shortName.includes('Pfizer')) shortName = 'Pfizer';
+                    else if (shortName.includes('Moderna')) shortName = 'Moderna';
+                    
+                    return {
+                        vaccine_name: shortName,
+                        count: parseInt(item.count)
+                    };
+                });
+                
+                let labels, values;
+                
+                if (covidVaccines.length > 0) {
+                    labels = covidVaccines.map(item => item.vaccine_name);
+                    values = covidVaccines.map(item => item.count);
+                } else {
+                    // No COVID-19 vaccine data
+                    labels = ['No Data Available'];
+                    values = [1];
                 }
+                
+                const backgroundColors = [
+                    '#005eb8', // NHS Blue - AstraZeneca
+                    '#41b6e6', // Light Blue - Pfizer
+                    '#330072', // Purple - Moderna
+                    '#ae2573', // Pink
+                    '#00a499', // Teal
+                ];
+                
+                // Create the chart
+                chartInstances['vaccine-distribution-chart'] = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: backgroundColors.slice(0, labels.length),
+                            borderWidth: 1,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            },
+                            title: {
+                                display: true,
+                                text: 'COVID-19 Vaccine Distribution'
+                            }
+                        }
+                    }
+                });
             }
-        }
-    });
+        })
+        .catch(error => {
+            console.error('Error fetching vaccine distribution data:', error);
+            // Create empty chart on error
+            chartInstances['vaccine-distribution-chart'] = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['No Data Available'],
+                    datasets: [{
+                        data: [1],
+                        backgroundColor: ['#cccccc'],
+                        borderWidth: 1,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right' },
+                        title: { display: true, text: 'COVID-19 Vaccine Distribution (No Data)' }
+                    }
+                }
+            });
+        });
 }
 
-// Create Purchase Trend Chart
+// Create Purchase Trend Chart (Daily for last 30 days)
 function createPurchaseTrendChart() {
     const ctx = document.getElementById('purchase-trend-chart');
     if (!ctx) return;
     
-    // Sample data
-    const sampleData = {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        datasets: [
-            {
-                label: 'Transactions',
-                data: [12, 19, 15, 25, 22, 18, 10],
-                backgroundColor: '#005eb8',
-                borderWidth: 0
-            },
-            {
-                label: 'Items',
-                data: [15, 25, 20, 35, 30, 25, 15],
-                backgroundColor: '#41b6e6',
-                borderWidth: 0
-            }
-        ]
-    };
+    // Destroy existing chart if it exists
+    if (chartInstances['purchase-trend-chart']) {
+        chartInstances['purchase-trend-chart'].destroy();
+    }
     
-    new Chart(ctx, {
-        type: 'bar',
-        data: sampleData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Purchase Trend'
+    // Fetch purchase trend data
+    fetch('/prs/api/stats?action=purchases')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Purchase trend data:', data);
+            
+            if (data.status === 'success' && data.data.purchase_trend) {
+                const trend = data.data.purchase_trend;
+                
+                let labels, transactionCounts, itemCounts;
+                
+                if (trend.length > 0) {
+                    // Sort by date
+                    trend.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    
+                    // Prepare data for the chart
+                    labels = trend.map(item => {
+                        const date = new Date(item.date);
+                        return date.toLocaleDateString('en-GB', { 
+                            month: 'short', 
+                            day: 'numeric' 
+                        });
+                    });
+                    transactionCounts = trend.map(item => parseInt(item.transaction_count) || 0);
+                    itemCounts = trend.map(item => parseInt(item.item_count) || 0);
+                } else {
+                    // No purchase data available
+                    labels = ['No Data'];
+                    transactionCounts = [0];
+                    itemCounts = [0];
                 }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
+                
+                // Create the chart
+                chartInstances['purchase-trend-chart'] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Transactions',
+                                data: transactionCounts,
+                                backgroundColor: '#005eb8', // NHS Blue
+                                borderWidth: 0
+                            },
+                            {
+                                label: 'Items Sold',
+                                data: itemCounts,
+                                backgroundColor: '#41b6e6', // Light Blue
+                                borderWidth: 0
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Purchase Trend (Last 30 Days)'
+                            },
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    maxRotation: 45
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching purchase trend data:', error);
+            // Create empty chart on error
+            chartInstances['purchase-trend-chart'] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['No Data'],
+                    datasets: [
+                        {
+                            label: 'Transactions',
+                            data: [0],
+                            backgroundColor: '#005eb8',
+                            borderWidth: 0
+                        },
+                        {
+                            label: 'Items Sold',
+                            data: [0],
+                            backgroundColor: '#41b6e6',
+                            borderWidth: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'Purchase Trend (No Data)' },
+                        legend: { display: true, position: 'top' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } },
+                        x: { ticks: { maxRotation: 45 } }
                     }
                 }
-            }
-        }
-    });
+            });
+        });
 }
 
-// Create Item Distribution Chart
+// Create Item Distribution Chart (Total stock by category)
 function createItemDistributionChart() {
     const ctx = document.getElementById('item-distribution-chart');
     if (!ctx) return;
     
-    // Sample data
-    const sampleData = {
-        labels: ['PPE', 'Hygiene Products', 'Medication', 'Testing Kits'],
-        datasets: [{
-            data: [35, 25, 20, 20],
-            backgroundColor: ['#005eb8', '#330072', '#00a499', '#78be20'],
-            borderWidth: 1,
-            borderColor: '#ffffff'
-        }]
-    };
+    // Destroy existing chart if it exists
+    if (chartInstances['item-distribution-chart']) {
+        chartInstances['item-distribution-chart'].destroy();
+    }
     
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: sampleData,
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right'
-                },
-                title: {
-                    display: true,
-                    text: 'Inventory by Category'
+    // Fetch inventory distribution data
+    fetch('/prs/api/stats?action=inventory')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Inventory distribution data:', data);
+            
+            if (data.status === 'success' && data.data.category_distribution) {
+                const distribution = data.data.category_distribution;
+                
+                let labels, values;
+                
+                if (distribution.length > 0) {
+                    // Prepare data for the chart
+                    labels = distribution.map(item => item.item_category);
+                    values = distribution.map(item => parseInt(item.total_stock) || 0);
+                } else {
+                    // No inventory data
+                    labels = ['No Data Available'];
+                    values = [1];
                 }
+                
+                const backgroundColors = [
+                    '#005eb8', // NHS Blue
+                    '#330072', // Purple
+                    '#00a499', // Teal
+                    '#78be20', // Green
+                    '#ed8b00', // Orange
+                    '#d5281b'  // Red
+                ];
+                
+                // Create the chart
+                chartInstances['item-distribution-chart'] = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: backgroundColors.slice(0, labels.length),
+                            borderWidth: 1,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Inventory by Category'
+                            }
+                        }
+                    }
+                });
             }
-        }
-    });
+        })
+        .catch(error => {
+            console.error('Error fetching inventory distribution data:', error);
+            // Create empty chart on error
+            chartInstances['item-distribution-chart'] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['No Data Available'],
+                    datasets: [{
+                        data: [1],
+                        backgroundColor: ['#cccccc'],
+                        borderWidth: 1,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right' },
+                        title: { display: true, text: 'Inventory by Category (No Data)' }
+                    }
+                }
+            });
+        });
 }
 
 // Load unverified vaccinations
