@@ -46,202 +46,220 @@ class StatsController {
         }
     }
     
-    private function getDashboardStats($user) {
-        // Default empty stats structure
-        $userStats = [
-            'total_users' => 0,
-            'admins' => 0,
-            'officials' => 0,
-            'merchants' => 0,
-            'public_users' => 0
-        ];
-        
-        $vaccinationStats = [
-            'total_records' => 0,
-            'verified_records' => 0,
-            'total_users' => 0
-        ];
-        
-        $inventoryStats = [
-            'total_items' => 0,
-            'total_stock' => 0,
-            'total_locations' => 0
-        ];
-        
-        $purchaseStats = [
-            'total_purchases' => 0,
-            'total_items_sold' => 0,
-            'unique_customers' => 0
-        ];
-        
-        $registrationTrend = [];
-        $purchaseTrend = [];
-        
-        // User statistics (only for admins and government officials)
-        if ($user->role_id <= 2) {
-            try {
-                $query = "SELECT 
-                            COUNT(*) as total_users,
-                            SUM(CASE WHEN role_id = 1 THEN 1 ELSE 0 END) as admins,
-                            SUM(CASE WHEN role_id = 2 THEN 1 ELSE 0 END) as officials,
-                            SUM(CASE WHEN role_id = 3 THEN 1 ELSE 0 END) as merchants,
-                            SUM(CASE WHEN role_id = 4 THEN 1 ELSE 0 END) as public_users
-                        FROM users";
-                $stmt = $this->db->prepare($query);
-                $stmt->execute();
-                
-                if ($stmt->rowCount() > 0) {
-                    $userStats = $stmt->fetch(PDO::FETCH_ASSOC);
-                }
-            } catch (PDOException $e) {
-                error_log("Error fetching user stats: " . $e->getMessage());
-            }
-        }
-        
-        // Vaccination statistics (only for admins and government officials)
-        if ($user->role_id <= 2) {
-            try {
-                $query = "SELECT 
-                            COUNT(*) as total_records,
-                            SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) as verified_records,
-                            COUNT(DISTINCT user_id) as total_users
-                        FROM vaccination_records";
-                $stmt = $this->db->prepare($query);
-                $stmt->execute();
-                
-                if ($stmt->rowCount() > 0) {
-                    $vaccinationStats = $stmt->fetch(PDO::FETCH_ASSOC);
-                }
-            } catch (PDOException $e) {
-                error_log("Error fetching vaccination stats: " . $e->getMessage());
-            }
-        }
-        
-        // Inventory statistics (filtered for merchants)
+private function getDashboardStats($user) {
+    // Initialize with defaults
+    $userStats = [
+        'total_users' => 0,
+        'admins' => 0,
+        'officials' => 0,
+        'merchants' => 0,
+        'public_users' => 0
+    ];
+    
+    $vaccinationStats = [
+        'total_records' => 0,
+        'verified_records' => 0,
+        'total_users' => 0
+    ];
+    
+    $inventoryStats = [
+        'total_items' => 0,
+        'total_stock' => 0,
+        'total_locations' => 0
+    ];
+    
+    $purchaseStats = [
+        'total_purchases' => 0,
+        'total_items_sold' => 0,
+        'unique_customers' => 0
+    ];
+    
+    // For merchants
+    if ($user->role_id == 3) {
         try {
-            if ($user->role_id <= 2) {
-                // Admins and government officials see all inventory
-                $query = "SELECT 
-                            COUNT(*) as total_items,
-                            SUM(quantity_available) as total_stock,
-                            COUNT(DISTINCT location_id) as total_locations
-                        FROM inventory";
-                $stmt = $this->db->prepare($query);
-                $stmt->execute();
-            } else if ($user->role_id == 3) {
-                // Merchants see only their inventory
-                $query = "SELECT 
-                            COUNT(*) as total_items,
-                            SUM(i.quantity_available) as total_stock,
-                            COUNT(DISTINCT i.location_id) as total_locations
-                        FROM inventory i
-                        JOIN merchant_locations ml ON i.location_id = ml.location_id
-                        WHERE ml.manager_id = ? OR ml.location_id IN (
-                            SELECT location_id FROM merchant_locations 
-                            WHERE business_id IN (
-                                SELECT business_id FROM merchant_locations WHERE manager_id = ?
-                            )
-                        )";
-                $stmt = $this->db->prepare($query);
-                $stmt->bindParam(1, $user->user_id);
-                $stmt->bindParam(2, $user->user_id);
-                $stmt->execute();
-            }
+            // Fixed inventory count for merchant
+            $query = "SELECT COUNT(*) as total_items FROM inventory";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute();
             
             if ($stmt->rowCount() > 0) {
-                $inventoryStats = $stmt->fetch(PDO::FETCH_ASSOC);
-                $inventoryStats['total_stock'] = $inventoryStats['total_stock'] ?? 0;
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $inventoryStats['total_items'] = intval($result['total_items']);
+            }
+            
+            // Fixed purchase count
+            $query = "SELECT COUNT(*) as total_purchases, COUNT(DISTINCT user_id) as unique_customers FROM purchases";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute();
+            
+            if ($stmt->rowCount() > 0) {
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $purchaseStats['total_purchases'] = intval($result['total_purchases']);
+                $purchaseStats['unique_customers'] = intval($result['unique_customers']);
+            }
+            
+            // Get total stock
+            $query = "SELECT COALESCE(SUM(quantity_available), 0) as total_stock FROM inventory";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute();
+            
+            if ($stmt->rowCount() > 0) {
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $inventoryStats['total_stock'] = intval($result['total_stock']);
+            }
+            
+            // Get location count
+            $query = "SELECT COUNT(DISTINCT location_id) as total_locations FROM inventory";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute();
+            
+            if ($stmt->rowCount() > 0) {
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $inventoryStats['total_locations'] = intval($result['total_locations']);
+            }
+            
+            // Get total items sold
+            $query = "SELECT COALESCE(SUM(quantity), 0) as total_items_sold FROM purchases";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute();
+            
+            if ($stmt->rowCount() > 0) {
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $purchaseStats['total_items_sold'] = intval($result['total_items_sold']);
+            }
+            
+            error_log("Merchant stats - Items: " . $inventoryStats['total_items'] . ", Purchases: " . $purchaseStats['total_purchases'] . ", Customers: " . $purchaseStats['unique_customers']);
+            
+        } catch (PDOException $e) {
+            error_log("Error fetching merchant stats: " . $e->getMessage());
+        }
+    } else {
+        // For admins and government officials
+        // User statistics
+        try {
+            $query = "SELECT 
+                        COUNT(*) as total_users,
+                        SUM(CASE WHEN role_id = 1 THEN 1 ELSE 0 END) as admins,
+                        SUM(CASE WHEN role_id = 2 THEN 1 ELSE 0 END) as officials,
+                        SUM(CASE WHEN role_id = 3 THEN 1 ELSE 0 END) as merchants,
+                        SUM(CASE WHEN role_id = 4 THEN 1 ELSE 0 END) as public_users
+                    FROM users";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute();
+            
+            if ($stmt->rowCount() > 0) {
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $userStats = [
+                    'total_users' => intval($result['total_users']),
+                    'admins' => intval($result['admins']),
+                    'officials' => intval($result['officials']),
+                    'merchants' => intval($result['merchants']),
+                    'public_users' => intval($result['public_users'])
+                ];
+            }
+        } catch (PDOException $e) {
+            error_log("Error fetching user stats: " . $e->getMessage());
+        }
+        
+        // Vaccination statistics
+        try {
+            $query = "SELECT 
+                        COUNT(*) as total_records,
+                        SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) as verified_records,
+                        COUNT(DISTINCT user_id) as total_users
+                    FROM vaccination_records";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute();
+            
+            if ($stmt->rowCount() > 0) {
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $vaccinationStats = [
+                    'total_records' => intval($result['total_records']),
+                    'verified_records' => intval($result['verified_records']),
+                    'total_users' => intval($result['total_users'])
+                ];
+            }
+        } catch (PDOException $e) {
+            error_log("Error fetching vaccination stats: " . $e->getMessage());
+        }
+        
+        // Inventory statistics for admins
+        try {
+            $query = "SELECT 
+                        COUNT(*) as total_items,
+                        COALESCE(SUM(quantity_available), 0) as total_stock,
+                        COUNT(DISTINCT location_id) as total_locations
+                    FROM inventory";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute();
+            
+            if ($stmt->rowCount() > 0) {
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $inventoryStats = [
+                    'total_items' => intval($result['total_items']),
+                    'total_stock' => intval($result['total_stock']),
+                    'total_locations' => intval($result['total_locations'])
+                ];
             }
         } catch (PDOException $e) {
             error_log("Error fetching inventory stats: " . $e->getMessage());
         }
         
-        // Purchase statistics (filtered for merchants)
+        // Purchase statistics for admins
         try {
-            if ($user->role_id <= 2) {
-                // Admins and government officials see all purchases
-                $query = "SELECT 
-                            COUNT(*) as total_purchases,
-                            SUM(quantity) as total_items_sold,
-                            COUNT(DISTINCT user_id) as unique_customers
-                        FROM purchases";
-                $stmt = $this->db->prepare($query);
-                $stmt->execute();
-            } else if ($user->role_id == 3) {
-                // Merchants see only purchases from their locations
-                $query = "SELECT 
-                            COUNT(*) as total_purchases,
-                            SUM(p.quantity) as total_items_sold,
-                            COUNT(DISTINCT p.user_id) as unique_customers
-                        FROM purchases p
-                        JOIN merchant_locations ml ON p.location_id = ml.location_id
-                        WHERE ml.manager_id = ? OR ml.location_id IN (
-                            SELECT location_id FROM merchant_locations 
-                            WHERE business_id IN (
-                                SELECT business_id FROM merchant_locations WHERE manager_id = ?
-                            )
-                        )";
-                $stmt = $this->db->prepare($query);
-                $stmt->bindParam(1, $user->user_id);
-                $stmt->bindParam(2, $user->user_id);
-                $stmt->execute();
-            }
+            $query = "SELECT 
+                        COUNT(*) as total_purchases,
+                        COALESCE(SUM(quantity), 0) as total_items_sold,
+                        COUNT(DISTINCT user_id) as unique_customers
+                    FROM purchases";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute();
             
             if ($stmt->rowCount() > 0) {
-                $purchaseStats = $stmt->fetch(PDO::FETCH_ASSOC);
-                $purchaseStats['total_items_sold'] = $purchaseStats['total_items_sold'] ?? 0;
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                $purchaseStats = [
+                    'total_purchases' => intval($result['total_purchases']),
+                    'total_items_sold' => intval($result['total_items_sold']),
+                    'unique_customers' => intval($result['unique_customers'])
+                ];
             }
         } catch (PDOException $e) {
             error_log("Error fetching purchase stats: " . $e->getMessage());
         }
-        
-        // Recent user registrations (last 7 days) - only for admins and government officials
-        if ($user->role_id <= 2) {
-            try {
-                $query = "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, COUNT(*) as count
-                        FROM users
-                        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                        GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
-                        ORDER BY date ASC";
-                $stmt = $this->db->prepare($query);
-                $stmt->execute();
-                
-                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $registrationTrend[] = $row;
-                }
-            } catch (PDOException $e) {
-                error_log("Error fetching registration trend: " . $e->getMessage());
+    }
+    
+    // Recent trends (simplified for merchants)
+    $registrationTrend = [];
+    $purchaseTrend = [];
+    
+    // Only get trends for admins and government officials
+    if ($user->role_id <= 2) {
+        // Recent user registrations (last 7 days)
+        try {
+            $query = "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, COUNT(*) as count
+                    FROM users
+                    WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                    GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+                    ORDER BY date ASC";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute();
+            
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $registrationTrend[] = $row;
             }
+        } catch (PDOException $e) {
+            error_log("Error fetching registration trend: " . $e->getMessage());
         }
         
-        // Recent purchases (last 7 days) - filtered for merchants
+        // Recent purchases (last 7 days)
         try {
-            if ($user->role_id <= 2) {
-                $query = "SELECT DATE_FORMAT(purchase_date, '%Y-%m-%d') as date, COUNT(*) as count
-                        FROM purchases
-                        WHERE purchase_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                        GROUP BY DATE_FORMAT(purchase_date, '%Y-%m-%d')
-                        ORDER BY date ASC";
-                $stmt = $this->db->prepare($query);
-                $stmt->execute();
-            } else if ($user->role_id == 3) {
-                $query = "SELECT DATE_FORMAT(p.purchase_date, '%Y-%m-%d') as date, COUNT(*) as count
-                        FROM purchases p
-                        JOIN merchant_locations ml ON p.location_id = ml.location_id
-                        WHERE p.purchase_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                        AND (ml.manager_id = ? OR ml.location_id IN (
-                            SELECT location_id FROM merchant_locations 
-                            WHERE business_id IN (
-                                SELECT business_id FROM merchant_locations WHERE manager_id = ?
-                            )
-                        ))
-                        GROUP BY DATE_FORMAT(p.purchase_date, '%Y-%m-%d')
-                        ORDER BY date ASC";
-                $stmt = $this->db->prepare($query);
-                $stmt->bindParam(1, $user->user_id);
-                $stmt->bindParam(2, $user->user_id);
-                $stmt->execute();
-            }
+            $query = "SELECT DATE_FORMAT(purchase_date, '%Y-%m-%d') as date, COUNT(*) as count
+                    FROM purchases
+                    WHERE purchase_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                    GROUP BY DATE_FORMAT(purchase_date, '%Y-%m-%d')
+                    ORDER BY date ASC";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute();
             
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $purchaseTrend[] = $row;
@@ -249,16 +267,17 @@ class StatsController {
         } catch (PDOException $e) {
             error_log("Error fetching purchase trend: " . $e->getMessage());
         }
-        
-        sendResponse('success', 'Dashboard statistics retrieved', [
-            'user_stats' => $userStats,
-            'vaccination_stats' => $vaccinationStats,
-            'inventory_stats' => $inventoryStats,
-            'purchase_stats' => $purchaseStats,
-            'registration_trend' => $registrationTrend,
-            'purchase_trend' => $purchaseTrend
-        ]);
     }
+    
+    sendResponse('success', 'Dashboard statistics retrieved', [
+        'user_stats' => $userStats,
+        'vaccination_stats' => $vaccinationStats,
+        'inventory_stats' => $inventoryStats,
+        'purchase_stats' => $purchaseStats,
+        'registration_trend' => $registrationTrend,
+        'purchase_trend' => $purchaseTrend
+    ]);
+}
     
     private function getVaccinationStats() {
         $vaccineDistribution = [];
