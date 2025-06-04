@@ -15,24 +15,28 @@ class StatsController {
             handleError('Unauthorized access', 401);
         }
         
-        // Only admins and government officials can access stats
-        if ($user->role_id > 2) {
+        // Allow admins, government officials, and merchants to access stats
+        if ($user->role_id > 3) {
             handleError('Unauthorized access', 403);
         }
         
         switch ($method) {
             case 'GET':
                 if ($action === 'dashboard') {
-                    $this->getDashboardStats();
+                    $this->getDashboardStats($user);
                 } else if ($action === 'vaccinations') {
+                    // Only admins and government officials can access vaccination stats
+                    if ($user->role_id > 2) {
+                        handleError('Unauthorized access', 403);
+                    }
                     $this->getVaccinationStats();
                 } else if ($action === 'inventory') {
-                    $this->getInventoryStats();
+                    $this->getInventoryStats($user);
                 } else if ($action === 'purchases') {
-                    $this->getPurchaseStats();
+                    $this->getPurchaseStats($user);
                 } else {
                     // Default action - return basic stats
-                    $this->getDashboardStats(); // Use dashboard as default
+                    $this->getDashboardStats($user);
                 }
                 break;
                 
@@ -42,7 +46,7 @@ class StatsController {
         }
     }
     
-    private function getDashboardStats() {
+    private function getDashboardStats($user) {
         // Default empty stats structure
         $userStats = [
             'total_users' => 0,
@@ -55,7 +59,7 @@ class StatsController {
         $vaccinationStats = [
             'total_records' => 0,
             'verified_records' => 0,
-            'vaccinated_users' => 0
+            'total_users' => 0
         ];
         
         $inventoryStats = [
@@ -73,107 +77,171 @@ class StatsController {
         $registrationTrend = [];
         $purchaseTrend = [];
         
-        // User statistics
-        try {
-            $query = "SELECT 
-                        COUNT(*) as total_users,
-                        SUM(CASE WHEN role_id = 1 THEN 1 ELSE 0 END) as admins,
-                        SUM(CASE WHEN role_id = 2 THEN 1 ELSE 0 END) as officials,
-                        SUM(CASE WHEN role_id = 3 THEN 1 ELSE 0 END) as merchants,
-                        SUM(CASE WHEN role_id = 4 THEN 1 ELSE 0 END) as public_users
-                    FROM users";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
-            
-            if ($stmt->rowCount() > 0) {
-                $userStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        // User statistics (only for admins and government officials)
+        if ($user->role_id <= 2) {
+            try {
+                $query = "SELECT 
+                            COUNT(*) as total_users,
+                            SUM(CASE WHEN role_id = 1 THEN 1 ELSE 0 END) as admins,
+                            SUM(CASE WHEN role_id = 2 THEN 1 ELSE 0 END) as officials,
+                            SUM(CASE WHEN role_id = 3 THEN 1 ELSE 0 END) as merchants,
+                            SUM(CASE WHEN role_id = 4 THEN 1 ELSE 0 END) as public_users
+                        FROM users";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute();
+                
+                if ($stmt->rowCount() > 0) {
+                    $userStats = $stmt->fetch(PDO::FETCH_ASSOC);
+                }
+            } catch (PDOException $e) {
+                error_log("Error fetching user stats: " . $e->getMessage());
             }
-        } catch (PDOException $e) {
-            // Log error but continue with default values
-            error_log("Error fetching user stats: " . $e->getMessage());
         }
         
-        // Vaccination statistics
-        try {
-            $query = "SELECT 
-                        COUNT(*) as total_records,
-                        SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) as verified_records,
-                        COUNT(DISTINCT user_id) as vaccinated_users
-                    FROM vaccination_records";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
-            
-            if ($stmt->rowCount() > 0) {
-                $vaccinationStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Vaccination statistics (only for admins and government officials)
+        if ($user->role_id <= 2) {
+            try {
+                $query = "SELECT 
+                            COUNT(*) as total_records,
+                            SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) as verified_records,
+                            COUNT(DISTINCT user_id) as total_users
+                        FROM vaccination_records";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute();
+                
+                if ($stmt->rowCount() > 0) {
+                    $vaccinationStats = $stmt->fetch(PDO::FETCH_ASSOC);
+                }
+            } catch (PDOException $e) {
+                error_log("Error fetching vaccination stats: " . $e->getMessage());
             }
-        } catch (PDOException $e) {
-            error_log("Error fetching vaccination stats: " . $e->getMessage());
         }
         
-        // Inventory statistics
+        // Inventory statistics (filtered for merchants)
         try {
-            $query = "SELECT 
-                        COUNT(*) as total_items,
-                        SUM(quantity_available) as total_stock,
-                        COUNT(DISTINCT location_id) as total_locations
-                    FROM inventory";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
+            if ($user->role_id <= 2) {
+                // Admins and government officials see all inventory
+                $query = "SELECT 
+                            COUNT(*) as total_items,
+                            SUM(quantity_available) as total_stock,
+                            COUNT(DISTINCT location_id) as total_locations
+                        FROM inventory";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute();
+            } else if ($user->role_id == 3) {
+                // Merchants see only their inventory
+                $query = "SELECT 
+                            COUNT(*) as total_items,
+                            SUM(i.quantity_available) as total_stock,
+                            COUNT(DISTINCT i.location_id) as total_locations
+                        FROM inventory i
+                        JOIN merchant_locations ml ON i.location_id = ml.location_id
+                        WHERE ml.manager_id = ? OR ml.location_id IN (
+                            SELECT location_id FROM merchant_locations 
+                            WHERE business_id IN (
+                                SELECT business_id FROM merchant_locations WHERE manager_id = ?
+                            )
+                        )";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(1, $user->user_id);
+                $stmt->bindParam(2, $user->user_id);
+                $stmt->execute();
+            }
             
             if ($stmt->rowCount() > 0) {
                 $inventoryStats = $stmt->fetch(PDO::FETCH_ASSOC);
-                // Handle null values that might come from SUM on empty tables
                 $inventoryStats['total_stock'] = $inventoryStats['total_stock'] ?? 0;
             }
         } catch (PDOException $e) {
             error_log("Error fetching inventory stats: " . $e->getMessage());
         }
         
-        // Purchase statistics
+        // Purchase statistics (filtered for merchants)
         try {
-            $query = "SELECT 
-                        COUNT(*) as total_purchases,
-                        SUM(quantity) as total_items_sold,
-                        COUNT(DISTINCT user_id) as unique_customers
-                    FROM purchases";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
+            if ($user->role_id <= 2) {
+                // Admins and government officials see all purchases
+                $query = "SELECT 
+                            COUNT(*) as total_purchases,
+                            SUM(quantity) as total_items_sold,
+                            COUNT(DISTINCT user_id) as unique_customers
+                        FROM purchases";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute();
+            } else if ($user->role_id == 3) {
+                // Merchants see only purchases from their locations
+                $query = "SELECT 
+                            COUNT(*) as total_purchases,
+                            SUM(p.quantity) as total_items_sold,
+                            COUNT(DISTINCT p.user_id) as unique_customers
+                        FROM purchases p
+                        JOIN merchant_locations ml ON p.location_id = ml.location_id
+                        WHERE ml.manager_id = ? OR ml.location_id IN (
+                            SELECT location_id FROM merchant_locations 
+                            WHERE business_id IN (
+                                SELECT business_id FROM merchant_locations WHERE manager_id = ?
+                            )
+                        )";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(1, $user->user_id);
+                $stmt->bindParam(2, $user->user_id);
+                $stmt->execute();
+            }
             
             if ($stmt->rowCount() > 0) {
                 $purchaseStats = $stmt->fetch(PDO::FETCH_ASSOC);
-                // Handle null values that might come from SUM on empty tables
                 $purchaseStats['total_items_sold'] = $purchaseStats['total_items_sold'] ?? 0;
             }
         } catch (PDOException $e) {
             error_log("Error fetching purchase stats: " . $e->getMessage());
         }
         
-        // Recent user registrations (last 7 days)
-        try {
-            $query = "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, COUNT(*) as count
-                    FROM users
-                    WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                    GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
-                    ORDER BY date ASC";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
-            
-            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $registrationTrend[] = $row;
+        // Recent user registrations (last 7 days) - only for admins and government officials
+        if ($user->role_id <= 2) {
+            try {
+                $query = "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, COUNT(*) as count
+                        FROM users
+                        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                        GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+                        ORDER BY date ASC";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute();
+                
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $registrationTrend[] = $row;
+                }
+            } catch (PDOException $e) {
+                error_log("Error fetching registration trend: " . $e->getMessage());
             }
-        } catch (PDOException $e) {
-            error_log("Error fetching registration trend: " . $e->getMessage());
         }
         
-        // Recent purchases (last 7 days)
+        // Recent purchases (last 7 days) - filtered for merchants
         try {
-            $query = "SELECT DATE_FORMAT(purchase_date, '%Y-%m-%d') as date, COUNT(*) as count
-                    FROM purchases
-                    WHERE purchase_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-                    GROUP BY DATE_FORMAT(purchase_date, '%Y-%m-%d')
-                    ORDER BY date ASC";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
+            if ($user->role_id <= 2) {
+                $query = "SELECT DATE_FORMAT(purchase_date, '%Y-%m-%d') as date, COUNT(*) as count
+                        FROM purchases
+                        WHERE purchase_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                        GROUP BY DATE_FORMAT(purchase_date, '%Y-%m-%d')
+                        ORDER BY date ASC";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute();
+            } else if ($user->role_id == 3) {
+                $query = "SELECT DATE_FORMAT(p.purchase_date, '%Y-%m-%d') as date, COUNT(*) as count
+                        FROM purchases p
+                        JOIN merchant_locations ml ON p.location_id = ml.location_id
+                        WHERE p.purchase_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                        AND (ml.manager_id = ? OR ml.location_id IN (
+                            SELECT location_id FROM merchant_locations 
+                            WHERE business_id IN (
+                                SELECT business_id FROM merchant_locations WHERE manager_id = ?
+                            )
+                        ))
+                        GROUP BY DATE_FORMAT(p.purchase_date, '%Y-%m-%d')
+                        ORDER BY date ASC";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(1, $user->user_id);
+                $stmt->bindParam(2, $user->user_id);
+                $stmt->execute();
+            }
             
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $purchaseTrend[] = $row;
@@ -288,23 +356,45 @@ class StatsController {
         ]);
     }
     
-    private function getInventoryStats() {
+    private function getInventoryStats($user) {
         $categoryDistribution = [];
         $topItems = [];
         $topLocations = [];
         
-        // Get inventory distribution by item category
+        // Get inventory distribution by item category (filtered for merchants)
         try {
-            $query = "SELECT 
-                        ci.item_category,
-                        COUNT(i.inventory_id) as location_count,
-                        SUM(i.quantity_available) as total_stock
-                    FROM inventory i
-                    JOIN critical_items ci ON i.item_id = ci.item_id
-                    GROUP BY ci.item_category
-                    ORDER BY total_stock DESC";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
+            if ($user->role_id <= 2) {
+                $query = "SELECT 
+                            ci.item_category,
+                            COUNT(i.inventory_id) as location_count,
+                            SUM(i.quantity_available) as total_stock
+                        FROM inventory i
+                        JOIN critical_items ci ON i.item_id = ci.item_id
+                        GROUP BY ci.item_category
+                        ORDER BY total_stock DESC";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute();
+            } else if ($user->role_id == 3) {
+                $query = "SELECT 
+                            ci.item_category,
+                            COUNT(i.inventory_id) as location_count,
+                            SUM(i.quantity_available) as total_stock
+                        FROM inventory i
+                        JOIN critical_items ci ON i.item_id = ci.item_id
+                        JOIN merchant_locations ml ON i.location_id = ml.location_id
+                        WHERE ml.manager_id = ? OR ml.location_id IN (
+                            SELECT location_id FROM merchant_locations 
+                            WHERE business_id IN (
+                                SELECT business_id FROM merchant_locations WHERE manager_id = ?
+                            )
+                        )
+                        GROUP BY ci.item_category
+                        ORDER BY total_stock DESC";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(1, $user->user_id);
+                $stmt->bindParam(2, $user->user_id);
+                $stmt->execute();
+            }
             
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $categoryDistribution[] = $row;
@@ -313,19 +403,42 @@ class StatsController {
             error_log("Error fetching category distribution: " . $e->getMessage());
         }
         
-        // Get top 10 items by availability
+        // Get top items by availability (filtered for merchants)
         try {
-            $query = "SELECT 
-                        ci.item_name,
-                        SUM(i.quantity_available) as total_stock,
-                        COUNT(i.location_id) as location_count
-                    FROM inventory i
-                    JOIN critical_items ci ON i.item_id = ci.item_id
-                    GROUP BY i.item_id
-                    ORDER BY total_stock DESC
-                    LIMIT 10";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
+            if ($user->role_id <= 2) {
+                $query = "SELECT 
+                            ci.item_name,
+                            SUM(i.quantity_available) as total_stock,
+                            COUNT(i.location_id) as location_count
+                        FROM inventory i
+                        JOIN critical_items ci ON i.item_id = ci.item_id
+                        GROUP BY i.item_id
+                        ORDER BY total_stock DESC
+                        LIMIT 10";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute();
+            } else if ($user->role_id == 3) {
+                $query = "SELECT 
+                            ci.item_name,
+                            SUM(i.quantity_available) as total_stock,
+                            COUNT(i.location_id) as location_count
+                        FROM inventory i
+                        JOIN critical_items ci ON i.item_id = ci.item_id
+                        JOIN merchant_locations ml ON i.location_id = ml.location_id
+                        WHERE ml.manager_id = ? OR ml.location_id IN (
+                            SELECT location_id FROM merchant_locations 
+                            WHERE business_id IN (
+                                SELECT business_id FROM merchant_locations WHERE manager_id = ?
+                            )
+                        )
+                        GROUP BY i.item_id
+                        ORDER BY total_stock DESC
+                        LIMIT 10";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(1, $user->user_id);
+                $stmt->bindParam(2, $user->user_id);
+                $stmt->execute();
+            }
             
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $topItems[] = $row;
@@ -334,21 +447,45 @@ class StatsController {
             error_log("Error fetching top items: " . $e->getMessage());
         }
         
-        // Get locations with most items
+        // Get locations with most items (filtered for merchants)
         try {
-            $query = "SELECT 
-                        ml.location_name,
-                        mb.business_name,
-                        COUNT(i.item_id) as item_count,
-                        SUM(i.quantity_available) as total_stock
-                    FROM inventory i
-                    JOIN merchant_locations ml ON i.location_id = ml.location_id
-                    JOIN merchant_businesses mb ON ml.business_id = mb.business_id
-                    GROUP BY i.location_id
-                    ORDER BY item_count DESC
-                    LIMIT 10";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
+            if ($user->role_id <= 2) {
+                $query = "SELECT 
+                            ml.location_name,
+                            mb.business_name,
+                            COUNT(i.item_id) as item_count,
+                            SUM(i.quantity_available) as total_stock
+                        FROM inventory i
+                        JOIN merchant_locations ml ON i.location_id = ml.location_id
+                        JOIN merchant_businesses mb ON ml.business_id = mb.business_id
+                        GROUP BY i.location_id
+                        ORDER BY item_count DESC
+                        LIMIT 10";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute();
+            } else if ($user->role_id == 3) {
+                $query = "SELECT 
+                            ml.location_name,
+                            mb.business_name,
+                            COUNT(i.item_id) as item_count,
+                            SUM(i.quantity_available) as total_stock
+                        FROM inventory i
+                        JOIN merchant_locations ml ON i.location_id = ml.location_id
+                        JOIN merchant_businesses mb ON ml.business_id = mb.business_id
+                        WHERE ml.manager_id = ? OR ml.location_id IN (
+                            SELECT location_id FROM merchant_locations 
+                            WHERE business_id IN (
+                                SELECT business_id FROM merchant_locations WHERE manager_id = ?
+                            )
+                        )
+                        GROUP BY i.location_id
+                        ORDER BY item_count DESC
+                        LIMIT 10";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(1, $user->user_id);
+                $stmt->bindParam(2, $user->user_id);
+                $stmt->execute();
+            }
             
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $topLocations[] = $row;
@@ -364,23 +501,45 @@ class StatsController {
         ]);
     }
     
-    private function getPurchaseStats() {
+    private function getPurchaseStats($user) {
         $purchaseTrend = [];
         $topItems = [];
         $topLocations = [];
         
-        // Get purchase trend by day for the last 30 days
+        // Get purchase trend by day for the last 30 days (filtered for merchants)
         try {
-            $query = "SELECT 
-                        DATE_FORMAT(purchase_date, '%Y-%m-%d') as date,
-                        COUNT(*) as transaction_count,
-                        SUM(quantity) as item_count
-                    FROM purchases
-                    WHERE purchase_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-                    GROUP BY DATE_FORMAT(purchase_date, '%Y-%m-%d')
-                    ORDER BY date ASC";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
+            if ($user->role_id <= 2) {
+                $query = "SELECT 
+                            DATE_FORMAT(purchase_date, '%Y-%m-%d') as date,
+                            COUNT(*) as transaction_count,
+                            SUM(quantity) as item_count
+                        FROM purchases
+                        WHERE purchase_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                        GROUP BY DATE_FORMAT(purchase_date, '%Y-%m-%d')
+                        ORDER BY date ASC";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute();
+            } else if ($user->role_id == 3) {
+                $query = "SELECT 
+                            DATE_FORMAT(p.purchase_date, '%Y-%m-%d') as date,
+                            COUNT(*) as transaction_count,
+                            SUM(p.quantity) as item_count
+                        FROM purchases p
+                        JOIN merchant_locations ml ON p.location_id = ml.location_id
+                        WHERE p.purchase_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                        AND (ml.manager_id = ? OR ml.location_id IN (
+                            SELECT location_id FROM merchant_locations 
+                            WHERE business_id IN (
+                                SELECT business_id FROM merchant_locations WHERE manager_id = ?
+                            )
+                        ))
+                        GROUP BY DATE_FORMAT(p.purchase_date, '%Y-%m-%d')
+                        ORDER BY date ASC";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(1, $user->user_id);
+                $stmt->bindParam(2, $user->user_id);
+                $stmt->execute();
+            }
             
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $purchaseTrend[] = $row;
@@ -389,20 +548,44 @@ class StatsController {
             error_log("Error fetching purchase trend: " . $e->getMessage());
         }
         
-        // Get top selling items
+        // Get top selling items (filtered for merchants)
         try {
-            $query = "SELECT 
-                        ci.item_name,
-                        ci.item_category,
-                        SUM(p.quantity) as quantity_sold,
-                        COUNT(DISTINCT p.user_id) as unique_customers
-                    FROM purchases p
-                    JOIN critical_items ci ON p.item_id = ci.item_id
-                    GROUP BY p.item_id
-                    ORDER BY quantity_sold DESC
-                    LIMIT 10";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
+            if ($user->role_id <= 2) {
+                $query = "SELECT 
+                            ci.item_name,
+                            ci.item_category,
+                            SUM(p.quantity) as quantity_sold,
+                            COUNT(DISTINCT p.user_id) as unique_customers
+                        FROM purchases p
+                        JOIN critical_items ci ON p.item_id = ci.item_id
+                        GROUP BY p.item_id
+                        ORDER BY quantity_sold DESC
+                        LIMIT 10";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute();
+            } else if ($user->role_id == 3) {
+                $query = "SELECT 
+                            ci.item_name,
+                            ci.item_category,
+                            SUM(p.quantity) as quantity_sold,
+                            COUNT(DISTINCT p.user_id) as unique_customers
+                        FROM purchases p
+                        JOIN critical_items ci ON p.item_id = ci.item_id
+                        JOIN merchant_locations ml ON p.location_id = ml.location_id
+                        WHERE ml.manager_id = ? OR ml.location_id IN (
+                            SELECT location_id FROM merchant_locations 
+                            WHERE business_id IN (
+                                SELECT business_id FROM merchant_locations WHERE manager_id = ?
+                            )
+                        )
+                        GROUP BY p.item_id
+                        ORDER BY quantity_sold DESC
+                        LIMIT 10";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(1, $user->user_id);
+                $stmt->bindParam(2, $user->user_id);
+                $stmt->execute();
+            }
             
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $topItems[] = $row;
@@ -411,22 +594,47 @@ class StatsController {
             error_log("Error fetching top items: " . $e->getMessage());
         }
         
-        // Get top locations by sales
+        // Get top locations by sales (filtered for merchants)
         try {
-            $query = "SELECT 
-                        ml.location_name,
-                        mb.business_name,
-                        COUNT(p.purchase_id) as transaction_count,
-                        SUM(p.quantity) as quantity_sold,
-                        COUNT(DISTINCT p.user_id) as unique_customers
-                    FROM purchases p
-                    JOIN merchant_locations ml ON p.location_id = ml.location_id
-                    JOIN merchant_businesses mb ON ml.business_id = mb.business_id
-                    GROUP BY p.location_id
-                    ORDER BY transaction_count DESC
-                    LIMIT 10";
-            $stmt = $this->db->prepare($query);
-            $stmt->execute();
+            if ($user->role_id <= 2) {
+                $query = "SELECT 
+                            ml.location_name,
+                            mb.business_name,
+                            COUNT(p.purchase_id) as transaction_count,
+                            SUM(p.quantity) as quantity_sold,
+                            COUNT(DISTINCT p.user_id) as unique_customers
+                        FROM purchases p
+                        JOIN merchant_locations ml ON p.location_id = ml.location_id
+                        JOIN merchant_businesses mb ON ml.business_id = mb.business_id
+                        GROUP BY p.location_id
+                        ORDER BY transaction_count DESC
+                        LIMIT 10";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute();
+            } else if ($user->role_id == 3) {
+                $query = "SELECT 
+                            ml.location_name,
+                            mb.business_name,
+                            COUNT(p.purchase_id) as transaction_count,
+                            SUM(p.quantity) as quantity_sold,
+                            COUNT(DISTINCT p.user_id) as unique_customers
+                        FROM purchases p
+                        JOIN merchant_locations ml ON p.location_id = ml.location_id
+                        JOIN merchant_businesses mb ON ml.business_id = mb.business_id
+                        WHERE ml.manager_id = ? OR ml.location_id IN (
+                            SELECT location_id FROM merchant_locations 
+                            WHERE business_id IN (
+                                SELECT business_id FROM merchant_locations WHERE manager_id = ?
+                            )
+                        )
+                        GROUP BY p.location_id
+                        ORDER BY transaction_count DESC
+                        LIMIT 10";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(1, $user->user_id);
+                $stmt->bindParam(2, $user->user_id);
+                $stmt->execute();
+            }
             
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $topLocations[] = $row;

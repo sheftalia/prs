@@ -167,7 +167,7 @@ $userRole = $_SESSION['user']['role_id'];
 <?php elseif ($userRole === 3): // Merchant ?>
 <div class="card">
     <div class="card-header">
-        <h2 class="card-title">Inventory Overview</h2>
+        <h2 class="card-title">Merchant Overview</h2>
     </div>
     <div class="card-body">
         <div class="stats-grid">
@@ -202,6 +202,139 @@ $userRole = $_SESSION['user']['role_id'];
                 <div class="stat-value" id="merchant-low-stock">--</div>
                 <div class="stat-label">Low Stock Items</div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Inventory Management</h3>
+                <a href="index.php?page=inventory" class="btn btn-primary btn-sm">Manage Stock</a>
+            </div>
+            <div class="card-body">
+                <p>Monitor and update your inventory levels to ensure adequate stock of critical items.</p>
+                <div class="merchant-actions">
+                    <a href="index.php?page=inventory" class="btn btn-secondary">Update Inventory</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Critical Items</h3>
+                <a href="index.php?page=critical-items" class="btn btn-primary btn-sm">View All</a>
+            </div>
+            <div class="card-body">
+                <p>View the list of critical items that you can stock and sell during pandemic situations.</p>
+                <div class="merchant-actions">
+                    <a href="index.php?page=critical-items" class="btn btn-secondary">Browse Items</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Quick Actions</h3>
+    </div>
+    <div class="card-body">
+        <div class="quick-actions-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div class="action-card" style="border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; text-align: center;">
+                <i class="fas fa-warehouse" style="font-size: 2rem; color: var(--color-primary); margin-bottom: 0.5rem;"></i>
+                <h4>Update Stock Levels</h4>
+                <p>Manage inventory for your locations</p>
+                <a href="index.php?page=inventory" class="btn btn-primary btn-sm">Update Stock</a>
+            </div>
+            
+            <div class="action-card" style="border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; text-align: center;">
+                <i class="fas fa-list" style="font-size: 2rem; color: var(--color-primary); margin-bottom: 0.5rem;"></i>
+                <h4>View Critical Items</h4>
+                <p>See all regulated critical items</p>
+                <a href="index.php?page=critical-items" class="btn btn-primary btn-sm">View Items</a>
+            </div>
+            
+            <div class="action-card" style="border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; text-align: center;">
+                <i class="fas fa-user-circle" style="font-size: 2rem; color: var(--color-primary); margin-bottom: 0.5rem;"></i>
+                <h4>Profile Settings</h4>
+                <p>Update your merchant information</p>
+                <a href="index.php?page=profile" class="btn btn-primary btn-sm">Edit Profile</a>
+            </div>
+            
+            <div class="action-card" style="border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; text-align: center;">
+                <i class="fas fa-info-circle" style="font-size: 2rem; color: var(--color-primary); margin-bottom: 0.5rem;"></i>
+                <h4>System Information</h4>
+                <p>Learn about PRS requirements</p>
+                <button class="btn btn-secondary btn-sm" id="merchant-info-btn">Learn More</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Merchant Information Modal -->
+<div id="merchant-info-modal" class="modal-backdrop hidden">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Merchant Responsibilities & System Information</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="merchant-info-content">
+                <div class="section">
+                    <h4><i class="fas fa-shield-alt"></i> Your Role in the Pandemic Resilience System</h4>
+                    <p>As a registered merchant in the PRS, you play a crucial role in ensuring fair distribution of essential supplies during pandemic situations.</p>
+                </div>
+                
+                <div class="section">
+                    <h4><i class="fas fa-tasks"></i> Key Responsibilities</h4>
+                    <ul>
+                        <li><strong>Maintain Accurate Stock Levels:</strong> Update your inventory regularly to reflect current stock of critical items</li>
+                        <li><strong>Adhere to Purchase Restrictions:</strong> Enforce government-set limits on customer purchases</li>
+                        <li><strong>Monitor DOB Restrictions:</strong> Ensure customers can only purchase on their designated days based on date of birth</li>
+                        <li><strong>Report Stock Updates:</strong> Keep the system informed of your available inventory</li>
+                        <li><strong>Fair Distribution:</strong> Ensure equitable access to essential supplies for all customers</li>
+                    </ul>
+                </div>
+                
+                <div class="section">
+                    <h4><i class="fas fa-cogs"></i> System Features Available</h4>
+                    <ul>
+                        <li><strong>Inventory Management:</strong> Update stock levels for your locations</li>
+                        <li><strong>Critical Items Database:</strong> View all regulated items and their restrictions</li>
+                        <li><strong>Stock Monitoring:</strong> Track low stock items and receive alerts</li>
+                        <li><strong>Purchase Compliance:</strong> System enforces all purchase limits automatically</li>
+                    </ul>
+                </div>
+                
+                <div class="section">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Compliance Requirements</h4>
+                    <div class="alert alert-info">
+                        <p><strong>Important:</strong> Failure to comply with PRS regulations may result in:</p>
+                        <ul>
+                            <li>Suspension of your merchant account</li>
+                            <li>Penalties as per government guidelines</li>
+                            <li>Removal from the PRS merchant network</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h4><i class="fas fa-phone"></i> Support & Contact</h4>
+                    <p>For technical support or compliance questions:</p>
+                    <ul>
+                        <li><strong>Technical Support:</strong> support@prs.gov.uk</li>
+                        <li><strong>Compliance Queries:</strong> compliance@prs.gov.uk</li>
+                        <li><strong>Emergency Hotline:</strong> 0800 PRS HELP</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary modal-close">I Understand</button>
         </div>
     </div>
 </div>
@@ -936,6 +1069,116 @@ function loadPublicDashboard() {
     
     // Load critical items
     loadCriticalItemsForDisplay();
+}
+
+// Load Merchant Dashboard
+function loadMerchantDashboard() {
+    console.log('Loading merchant dashboard...');
+    
+    // Load merchant statistics using the stats endpoint
+    loadMerchantStats();
+    
+    // Setup modal functionality after DOM is ready
+    setupMerchantModal();
+}
+
+// Load merchant statistics from stats endpoint
+function loadMerchantStats() {
+    // Load dashboard stats (now accessible to merchants)
+    fetch('/prs/api/stats?action=dashboard')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Merchant stats data:', data);
+            if (data.status === 'success') {
+                // Update inventory statistics
+                const inventoryStats = data.data.inventory_stats;
+                document.getElementById('merchant-total-items').textContent = inventoryStats.total_items || 0;
+                
+                // Update purchase statistics  
+                const purchaseStats = data.data.purchase_stats;
+                document.getElementById('merchant-total-sales').textContent = purchaseStats.total_purchases || 0;
+                document.getElementById('merchant-total-customers').textContent = purchaseStats.unique_customers || 0;
+                
+                // Calculate low stock items from inventory
+                loadMerchantLowStockCount();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading merchant stats:', error);
+            // Set default values on error
+            document.getElementById('merchant-total-items').textContent = '0';
+            document.getElementById('merchant-total-sales').textContent = '0';
+            document.getElementById('merchant-total-customers').textContent = '0';
+            document.getElementById('merchant-low-stock').textContent = '0';
+        });
+}
+
+// Load low stock count for merchants
+function loadMerchantLowStockCount() {
+    fetch('/prs/api/inventory?action=low-stock&threshold=20')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const lowStockCount = data.data.items ? data.data.items.length : 0;
+                document.getElementById('merchant-low-stock').textContent = lowStockCount;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading low stock count:', error);
+            document.getElementById('merchant-low-stock').textContent = '0';
+        });
+}
+
+// Setup merchant modal functionality
+function setupMerchantModal() {
+    // Use setTimeout to ensure DOM is fully loaded
+    setTimeout(() => {
+        const infoButton = document.getElementById('merchant-info-btn');
+        const modal = document.getElementById('merchant-info-modal');
+        
+        if (infoButton && modal) {
+            // Remove any existing event listeners
+            infoButton.onclick = null;
+            
+            // Add click event listener
+            infoButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('Merchant info button clicked');
+                showMerchantInfoModal();
+            });
+            
+            console.log('Merchant modal setup complete');
+        } else {
+            console.error('Merchant info button or modal not found');
+        }
+    }, 100);
+}
+
+// Show merchant info modal
+function showMerchantInfoModal() {
+    const modal = document.getElementById('merchant-info-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        
+        // Setup close functionality
+        const closeButtons = modal.querySelectorAll('.modal-close');
+        closeButtons.forEach(button => {
+            button.onclick = function() {
+                modal.classList.add('hidden');
+            };
+        });
+        
+        // Close on backdrop click
+        modal.onclick = function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        };
+        
+        console.log('Merchant info modal shown');
+    } else {
+        console.error('Merchant info modal not found');
+    }
 }
 
 // Load unverified vaccinations (limited to 5 for dashboard)
