@@ -130,11 +130,11 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                         </li>
                         <?php endif; ?>
                         
-                        <?php if ($userRole <= 3): // Admin, Government & Merchants ?>
+                        <?php if ($userRole === 4): // Only Public Users ?>
                         <li class="<?php echo $page === 'purchases' ? 'active' : ''; ?>">
                             <a href="index.php?page=purchases">
                                 <i class="fas fa-shopping-cart"></i>
-                                Purchases
+                                Purchase History
                             </a>
                         </li>
                         <?php endif; ?>

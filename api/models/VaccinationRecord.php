@@ -140,6 +140,36 @@ class VaccinationRecord {
         
         return $stmt;
     }
+
+    // List all verified vaccination records
+    public function readVerified($page = 1, $limit = 20) {
+        $offset = ($page - 1) * $limit;
+        
+        $query = "SELECT vr.*, u.full_name as user_name, u.prs_id, v.full_name as verifier_name
+                FROM " . $this->table_name . " vr
+                JOIN users u ON vr.user_id = u.user_id
+                LEFT JOIN users v ON vr.verified_by = v.user_id
+                WHERE vr.verified = 1
+                ORDER BY vr.verified_date DESC
+                LIMIT :limit OFFSET :offset";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        return $stmt;
+    }
+
+    // Count verified records
+    public function countVerified() {
+        $query = "SELECT COUNT(*) as total FROM " . $this->table_name . " WHERE verified = 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row['total'] ?? 0;
+    }
     
     // Get vaccination statistics
     public function getStatistics() {

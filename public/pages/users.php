@@ -35,7 +35,17 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Load users list
-    fetch('/prs/api/users?limit=1000') // Set a high limit to get all users
+    loadUsers();
+    
+    // Setup add user button (placeholder for now)
+    document.getElementById('add-user-btn').addEventListener('click', function() {
+        alert('Add user functionality coming soon');
+    });
+});
+
+// Load users list
+function loadUsers() {
+    fetch('/prs/api/users?limit=1000') // Get all users
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
@@ -66,12 +76,29 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td>${user.role_name}</td>
                         <td>${statusBadge}</td>
                         <td>
-                            <button class="btn btn-primary btn-sm">View</button>
-                            <button class="btn btn-secondary btn-sm">Edit</button>
+                            <button class="btn btn-primary btn-sm view-btn" data-user-id="${user.user_id}">View</button>
+                            <button class="btn btn-secondary btn-sm edit-btn" data-user-id="${user.user_id}">Edit</button>
                         </td>
                     `;
                     
                     tbody.appendChild(row);
+                });
+                
+                // Add event listeners to buttons
+                const viewButtons = document.querySelectorAll('.view-btn');
+                viewButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const userId = this.getAttribute('data-user-id');
+                        viewUser(userId);
+                    });
+                });
+                
+                const editButtons = document.querySelectorAll('.edit-btn');
+                editButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const userId = this.getAttribute('data-user-id');
+                        editUser(userId);
+                    });
                 });
             } else {
                 document.getElementById('users-list').innerHTML = 
@@ -83,5 +110,32 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('users-list').innerHTML = 
                 '<tr><td colspan="6" class="text-center">Failed to load users</td></tr>';
         });
-});
+}
+
+// View user details
+function viewUser(userId) {
+    // For now, just show user details in an alert
+    // In a real implementation, this would open a modal or redirect to a details page
+    fetch(`/prs/api/users/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const user = data.data;
+                alert(`User Details:\nName: ${user.full_name}\nEmail: ${user.email}\nPRS ID: ${user.prs_id}\nStatus: ${user.account_status}`);
+            } else {
+                alert('Failed to load user details');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading user details:', error);
+            alert('Failed to load user details');
+        });
+}
+
+// Edit user
+function editUser(userId) {
+    // For now, just show a placeholder alert
+    // In a real implementation, this would open an edit modal
+    alert('Edit user functionality coming soon');
+}
 </script>

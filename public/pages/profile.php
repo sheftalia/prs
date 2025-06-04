@@ -68,30 +68,6 @@ $user = $_SESSION['user'];
             </div>
         </div>
         <?php endif; ?>
-        
-        <div class="card mt-4">
-            <div class="card-header">
-                <h2 class="card-title">Recent Activity</h2>
-            </div>
-            <div class="card-body">
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Activity</th>
-                                <th>Date</th>
-                                <th>IP Address</th>
-                            </tr>
-                        </thead>
-                        <tbody id="activity-log">
-                            <tr>
-                                <td colspan="3" class="text-center">Loading activity log...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -210,9 +186,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load family members
     loadFamilyMembers();
     <?php endif; ?>
-    
-    // Load activity log
-    loadActivityLog();
     
     // Form validation for password change
     document.getElementById('change-password-form').addEventListener('submit', function(e) {
@@ -340,40 +313,4 @@ function removeFamilyMember(familyId, button) {
     }
 }
 <?php endif; ?>
-
-// Load activity log
-function loadActivityLog() {
-    fetch('/prs/api/users/activity')
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const activities = data.data.activities || [];
-                const tbody = document.getElementById('activity-log');
-                
-                if (activities.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" class="text-center">No recent activity</td></tr>';
-                    return;
-                }
-                
-                tbody.innerHTML = '';
-                
-                activities.forEach(activity => {
-                    const row = document.createElement('tr');
-                    
-                    row.innerHTML = `
-                        <td>${activity.action} ${activity.entity_affected || ''}</td>
-                        <td>${new Date(activity.timestamp).toLocaleString()}</td>
-                        <td>${activity.ip_address}</td>
-                    `;
-                    
-                    tbody.appendChild(row);
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error loading activity log:', error);
-            document.getElementById('activity-log').innerHTML = 
-                '<tr><td colspan="3" class="text-center">Failed to load activity log</td></tr>';
-        });
-}
 </script>

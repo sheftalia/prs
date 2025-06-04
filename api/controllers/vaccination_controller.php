@@ -23,6 +23,8 @@ class VaccinationController {
                     $this->getUserVaccinations($user);
                 } else if ($action === 'unverified' && in_array($user->role_id, [1, 2])) {
                     $this->getUnverifiedRecords();
+                } else if ($action === 'verified' && in_array($user->role_id, [1, 2])) {
+                    $this->getVerifiedRecords();
                 } else if ($action === 'stats' && in_array($user->role_id, [1, 2])) {
                     $this->getVaccinationStats();
                 } else {
@@ -244,6 +246,59 @@ class VaccinationController {
         } catch (PDOException $e) {
             error_log("Error retrieving unverified records: " . $e->getMessage());
             sendResponse('success', 'Unverified vaccination records retrieved', [
+                'records' => [],
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => 0,
+                    'pages' => 0
+                ]
+            ]);
+        }
+    }
+
+    private function getVerifiedRecords() {
+        include_once 'models/VaccinationRecord.php';
+        $record = new VaccinationRecord($this->db);
+        
+        // Get pagination parameters
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
+        
+        try {
+            $stmt = $record->readVerified($page, $limit);
+            
+            $records = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $records[] = [
+                    'record_id' => $row['record_id'],
+                    'user_id' => $row['user_id'],
+                    'user_name' => $row['user_name'],
+                    'prs_id' => $row['prs_id'],
+                    'vaccine_name' => $row['vaccine_name'],
+                    'date_administered' => $row['date_administered'],
+                    'dose_number' => $row['dose_number'],
+                    'provider' => $row['provider'],
+                    'verifier_name' => $row['verifier_name'],
+                    'verified_date' => $row['verified_date']
+                ];
+            }
+            
+            // Get total count for pagination
+            $total = $record->countVerified();
+            
+            sendResponse('success', 'Verified vaccination records retrieved', [
+                'records' => $records,
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => $total,
+                    'pages' => ceil($total / $limit)
+                ]
+            ]);
+        } catch (PDOException $e) {
+            error_log("Error retrieving verified records: " . $e->getMessage());
+            sendResponse('success', 'Verified vaccination records retrieved', [
                 'records' => [],
                 'pagination' => [
                     'page' => $page,

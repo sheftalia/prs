@@ -48,20 +48,6 @@ $userId = $_SESSION['user']['user_id'];
                 <div class="stat-label">Pending Verification</div>
             </div>
         </div>
-        
-        <div class="row">
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <canvas id="vaccination-trend-chart"></canvas>
-                </div>
-            </div>
-            
-            <div class="col-md-6">
-                <div class="chart-container">
-                    <canvas id="vaccine-distribution-chart"></canvas>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -89,8 +75,34 @@ $userId = $_SESSION['user']['user_id'];
                 </tbody>
             </table>
         </div>
-        
-        <div class="pagination" id="verification-pagination"></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Verified Vaccination Records</h2>
+    </div>
+    <div class="card-body">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>PRS ID</th>
+                        <th>Vaccine</th>
+                        <th>Dose</th>
+                        <th>Date Administered</th>
+                        <th>Verified By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="verified-records">
+                    <tr>
+                        <td colspan="7" class="text-center">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -126,8 +138,6 @@ $userId = $_SESSION['user']['user_id'];
                 </tbody>
             </table>
         </div>
-        
-        <div class="pagination" id="records-pagination"></div>
     </div>
 </div>
 
@@ -246,10 +256,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (userRole <= 2) { // Admin & Government Officials
         loadVaccinationStats();
         loadVerificationQueue();
-        setupPagination();
+        loadVerifiedRecords();
     } else {
         loadVaccinationRecords();
-        setupRecordsPagination();
         
         <?php if ($userRole === 4): // Public User ?>
         loadFamilyMembers();
@@ -436,9 +445,6 @@ function loadVerificationQueue(page = 1) {
                         verifyVaccinationRecord(recordId, this);
                     });
                 });
-                
-                // Update pagination
-                updatePagination(page, data.data.total_pages);
             }
         })
         .catch(error => {
@@ -448,74 +454,55 @@ function loadVerificationQueue(page = 1) {
         });
 }
 
-// Setup pagination
-function setupPagination() {
-    const pagination = document.getElementById('verification-pagination');
-    
-    pagination.addEventListener('click', function(e) {
-        if (e.target.tagName === 'A') {
-            e.preventDefault();
-            const page = parseInt(e.target.getAttribute('data-page'));
-            loadVerificationQueue(page);
-        }
-    });
-}
-
-// Update pagination links
-function updatePagination(currentPage, totalPages) {
-    const pagination = document.getElementById('verification-pagination');
-    pagination.innerHTML = '';
-    
-    // Don't show pagination if there's only one page
-    if (totalPages <= 1) {
-        return;
-    }
-    
-    // Previous page
-    const prevItem = document.createElement('li');
-    prevItem.className = 'pagination-item';
-    const prevLink = document.createElement('a');
-    prevLink.href = '#';
-    prevLink.className = 'pagination-link';
-    prevLink.setAttribute('data-page', Math.max(1, currentPage - 1));
-    prevLink.textContent = 'Previous';
-    prevItem.appendChild(prevLink);
-    pagination.appendChild(prevItem);
-    
-    // Page numbers
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    if (endPage - startPage + 1 < maxVisiblePages) {
-        startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-        const pageItem = document.createElement('li');
-        pageItem.className = 'pagination-item';
-        const pageLink = document.createElement('a');
-        pageLink.href = '#';
-        pageLink.className = 'pagination-link';
-        if (i === currentPage) {
-            pageLink.className += ' active';
-        }
-        pageLink.setAttribute('data-page', i);
-        pageLink.textContent = i;
-        pageItem.appendChild(pageLink);
-        pagination.appendChild(pageItem);
-    }
-    
-    // Next page
-    const nextItem = document.createElement('li');
-    nextItem.className = 'pagination-item';
-    const nextLink = document.createElement('a');
-    nextLink.href = '#';
-    nextLink.className = 'pagination-link';
-    nextLink.setAttribute('data-page', Math.min(totalPages, currentPage + 1));
-    nextLink.textContent = 'Next';
-    nextItem.appendChild(nextLink);
-    pagination.appendChild(nextItem);
+// Load verified vaccination records
+function loadVerifiedRecords(page = 1) {
+    fetch(`/prs/api/vaccinations?action=verified&page=${page}&limit=20`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const records = data.data.records || [];
+                const tbody = document.getElementById('verified-records');
+                
+                if (records.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center">No verified vaccination records</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = '';
+                
+                records.forEach(record => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${record.user_name}</td>
+                        <td>${record.prs_id}</td>
+                        <td>${record.vaccine_name}</td>
+                        <td>${record.dose_number}</td>
+                        <td>${new Date(record.date_administered).toLocaleDateString()}</td>
+                        <td>${record.verifier_name}</td>
+                        <td>
+                            <button class="btn btn-primary btn-sm view-btn" data-record-id="${record.record_id}">View</button>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+                
+                // Add event listeners to view buttons
+                const viewButtons = document.querySelectorAll('#verified-records .view-btn');
+                viewButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const recordId = this.getAttribute('data-record-id');
+                        viewVaccinationRecord(recordId);
+                    });
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading verified records:', error);
+            document.getElementById('verified-records').innerHTML = 
+                '<tr><td colspan="7" class="text-center">Failed to load data</td></tr>';
+        });
 }
 
 // Verify vaccination record
@@ -651,9 +638,6 @@ function loadVaccinationRecords(page = 1) {
                         toggleModal(document.getElementById('upload-document-modal'));
                     });
                 });
-                
-                // Update pagination
-                updateRecordsPagination(page, data.data.total_pages);
             }
         })
         .catch(error => {
@@ -661,76 +645,6 @@ function loadVaccinationRecords(page = 1) {
             document.getElementById('vaccination-records').innerHTML = 
                 '<tr><td colspan="6" class="text-center">Failed to load data</td></tr>';
         });
-}
-
-// Setup records pagination
-function setupRecordsPagination() {
-    const pagination = document.getElementById('records-pagination');
-    
-    pagination.addEventListener('click', function(e) {
-        if (e.target.tagName === 'A') {
-            e.preventDefault();
-            const page = parseInt(e.target.getAttribute('data-page'));
-            loadVaccinationRecords(page);
-        }
-    });
-}
-
-// Update records pagination links
-function updateRecordsPagination(currentPage, totalPages) {
-    const pagination = document.getElementById('records-pagination');
-    pagination.innerHTML = '';
-    
-    // Don't show pagination if there's only one page
-    if (totalPages <= 1) {
-        return;
-    }
-    
-    // Previous page
-    const prevItem = document.createElement('li');
-    prevItem.className = 'pagination-item';
-    const prevLink = document.createElement('a');
-    prevLink.href = '#';
-    prevLink.className = 'pagination-link';
-    prevLink.setAttribute('data-page', Math.max(1, currentPage - 1));
-    prevLink.textContent = 'Previous';
-    prevItem.appendChild(prevLink);
-    pagination.appendChild(prevItem);
-    
-    // Page numbers
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    if (endPage - startPage + 1 < maxVisiblePages) {
-        startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-        const pageItem = document.createElement('li');
-        pageItem.className = 'pagination-item';
-        const pageLink = document.createElement('a');
-        pageLink.href = '#';
-        pageLink.className = 'pagination-link';
-        if (i === currentPage) {
-            pageLink.className += ' active';
-        }
-        pageLink.setAttribute('data-page', i);
-        pageLink.textContent = i;
-        pageItem.appendChild(pageLink);
-        pagination.appendChild(pageItem);
-    }
-    
-    // Next page
-    const nextItem = document.createElement('li');
-    nextItem.className = 'pagination-item';
-    const nextLink = document.createElement('a');
-    nextLink.href = '#';
-    nextLink.className = 'pagination-link';
-    nextLink.setAttribute('data-page', Math.min(totalPages, currentPage + 1));
-    nextLink.textContent = 'Next';
-    nextItem.appendChild(nextLink);
-    pagination.appendChild(nextItem);
 }
 
 <?php if ($userRole === 4): // Public User ?>
