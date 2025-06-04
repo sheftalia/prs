@@ -107,12 +107,14 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                         </li>
                         <?php endif; ?>
                         
+                        <?php if ($userRole <= 2 || $userRole === 4): // Admin, Government Officials, and Public Users ?>
                         <li class="<?php echo $page === 'vaccinations' ? 'active' : ''; ?>">
                             <a href="index.php?page=vaccinations">
                                 <i class="fas fa-syringe"></i>
                                 Vaccinations
                             </a>
                         </li>
+                        <?php endif; ?>
                         
                         <li class="<?php echo $page === 'critical-items' ? 'active' : ''; ?>">
                             <a href="index.php?page=critical-items">
