@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Load purchase history
 function loadPurchaseHistory(page = 1) {
-    fetch(`/prs/api/purchases?action=history&page=${page}&limit=10`)
+    fetch(`/prs/api/purchases?action=history&limit=1000`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
