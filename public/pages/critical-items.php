@@ -39,8 +39,6 @@ $userRole = $_SESSION['user']['role_id'];
                 </tbody>
             </table>
         </div>
-        
-        <div class="pagination" id="items-pagination"></div>
     </div>
 </div>
 
@@ -212,9 +210,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load items list
     loadItems();
     
-    // Setup pagination
-    setupPagination();
-    
     // Setup form submissions
     <?php if ($userRole <= 2): // Admin & Government Officials ?>
     document.getElementById('edit-item-form').addEventListener('submit', function(e) {
@@ -233,11 +228,11 @@ document.addEventListener('DOMContentLoaded', function() {
     <?php endif; ?>
 });
 
-// Load items list
-function loadItems(page = 1) {
+// Load items list (removed pagination)
+function loadItems() {
     const apiEndpoint = <?php echo $userRole <= 2 ? "'/prs/api/items'" : "'/prs/api/items?action=active'"; ?>;
     
-    fetch(`${apiEndpoint}?page=${page}&limit=10`)
+    fetch(`${apiEndpoint}?limit=1000`) // Load all items
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
@@ -310,11 +305,6 @@ function loadItems(page = 1) {
                     });
                 });
                 <?php endif; ?>
-                
-                // Update pagination
-                if (data.data.pagination) {
-                    updatePagination(page, data.data.pagination.pages);
-                }
             }
         })
         .catch(error => {
@@ -322,76 +312,6 @@ function loadItems(page = 1) {
             document.getElementById('items-list').innerHTML = 
                 '<tr><td colspan="<?php echo $userRole <= 2 ? '6' : '5'; ?>" class="text-center">Failed to load data</td></tr>';
         });
-}
-
-// Setup pagination
-function setupPagination() {
-    const pagination = document.getElementById('items-pagination');
-    
-    pagination.addEventListener('click', function(e) {
-        if (e.target.tagName === 'A') {
-            e.preventDefault();
-            const page = parseInt(e.target.getAttribute('data-page'));
-            loadItems(page);
-        }
-    });
-}
-
-// Update pagination links
-function updatePagination(currentPage, totalPages) {
-    const pagination = document.getElementById('items-pagination');
-    pagination.innerHTML = '';
-    
-    // Don't show pagination if there's only one page
-    if (totalPages <= 1) {
-        return;
-    }
-    
-    // Previous page
-    const prevItem = document.createElement('li');
-    prevItem.className = 'pagination-item';
-    const prevLink = document.createElement('a');
-    prevLink.href = '#';
-    prevLink.className = 'pagination-link';
-    prevLink.setAttribute('data-page', Math.max(1, currentPage - 1));
-    prevLink.textContent = 'Previous';
-    prevItem.appendChild(prevLink);
-    pagination.appendChild(prevItem);
-    
-    // Page numbers
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    if (endPage - startPage + 1 < maxVisiblePages) {
-        startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-        const pageItem = document.createElement('li');
-        pageItem.className = 'pagination-item';
-        const pageLink = document.createElement('a');
-        pageLink.href = '#';
-        pageLink.className = 'pagination-link';
-        if (i === currentPage) {
-            pageLink.className += ' active';
-        }
-        pageLink.setAttribute('data-page', i);
-        pageLink.textContent = i;
-        pageItem.appendChild(pageLink);
-        pagination.appendChild(pageItem);
-    }
-    
-    // Next page
-    const nextItem = document.createElement('li');
-    nextItem.className = 'pagination-item';
-    const nextLink = document.createElement('a');
-    nextLink.href = '#';
-    nextLink.className = 'pagination-link';
-    nextLink.setAttribute('data-page', Math.min(totalPages, currentPage + 1));
-    nextLink.textContent = 'Next';
-    nextItem.appendChild(nextLink);
-    pagination.appendChild(nextItem);
 }
 
 // View item details

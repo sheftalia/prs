@@ -873,100 +873,6 @@ function createItemDistributionChart() {
         });
 }
 
-// Load unverified vaccinations
-function loadUnverifiedVaccinations() {
-    fetch('/prs/api/vaccinations?action=unverified&limit=5')
-        .then(response => response.json())
-        .then(data => {
-            console.log('Unverified vaccinations:', data);
-            const tbody = document.getElementById('unverified-vaccinations');
-            
-            if (data.status === 'success' && data.data.records.length > 0) {
-                tbody.innerHTML = '';
-                
-                data.data.records.forEach(record => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${record.user_name} (${record.prs_id})</td>
-                        <td>${record.vaccine_name}</td>
-                        <td>${new Date(record.date_administered).toLocaleDateString()}</td>
-                        <td>
-                            <button class="btn btn-success btn-sm verify-btn" data-record-id="${record.record_id}">
-                                Verify
-                            </button>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
-                
-                // Add event listeners to verify buttons
-                const verifyButtons = document.querySelectorAll('.verify-btn');
-                verifyButtons.forEach(button => {
-                    button.addEventListener('click', function() {
-                        const recordId = this.getAttribute('data-record-id');
-                        verifyVaccinationRecord(recordId, this);
-                    });
-                });
-            } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No unverified vaccinations</td></tr>';
-            }
-        })
-        .catch(error => {
-            console.error('Error loading unverified vaccinations:', error);
-            document.getElementById('unverified-vaccinations').innerHTML = 
-                '<tr><td colspan="4" class="text-center">Failed to load data</td></tr>';
-        });
-}
-
-// Load low stock items
-function loadLowStockItems() {
-    fetch('/prs/api/inventory?action=low-stock&threshold=20')
-        .then(response => response.json())
-        .then(data => {
-            console.log('Low stock items:', data);
-            const tbody = document.getElementById('low-stock-items');
-            
-            if (data.status === 'success' && data.data.items.length > 0) {
-                tbody.innerHTML = '';
-                
-                data.data.items.slice(0, 5).forEach(item => {
-                    const row = document.createElement('tr');
-                    
-                    // Determine status
-                    let status = '';
-                    let statusClass = '';
-                    
-                    if (item.quantity_available === 0) {
-                        status = 'Out of Stock';
-                        statusClass = 'badge-error';
-                    } else if (item.quantity_available <= 5) {
-                        status = 'Critical';
-                        statusClass = 'badge-warning';
-                    } else {
-                        status = 'Low';
-                        statusClass = 'badge-info';
-                    }
-                    
-                    row.innerHTML = `
-                        <td>${item.item_name}</td>
-                        <td>${item.location_name}</td>
-                        <td>${item.quantity_available}</td>
-                        <td><span class="badge ${statusClass}">${status}</span></td>
-                    `;
-                    
-                    tbody.appendChild(row);
-                });
-            } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No low stock items</td></tr>';
-            }
-        })
-        .catch(error => {
-            console.error('Error loading low stock items:', error);
-            document.getElementById('low-stock-items').innerHTML = 
-                '<tr><td colspan="4" class="text-center">Failed to load data</td></tr>';
-        });
-}
-
 // Load Public User Dashboard
 function loadPublicDashboard() {
     console.log('Loading public user dashboard...');
@@ -1032,7 +938,101 @@ function loadPublicDashboard() {
     loadCriticalItemsForDisplay();
 }
 
-// Helper function to display user vaccinations
+// Load unverified vaccinations (limited to 5 for dashboard)
+function loadUnverifiedVaccinations() {
+    fetch('/prs/api/vaccinations?action=unverified&limit=5')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Unverified vaccinations:', data);
+            const tbody = document.getElementById('unverified-vaccinations');
+            
+            if (data.status === 'success' && data.data.records.length > 0) {
+                tbody.innerHTML = '';
+                
+                data.data.records.forEach(record => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${record.user_name} (${record.prs_id})</td>
+                        <td>${record.vaccine_name}</td>
+                        <td>${new Date(record.date_administered).toLocaleDateString()}</td>
+                        <td>
+                            <button class="btn btn-success btn-sm verify-btn" data-record-id="${record.record_id}">
+                                Verify
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                // Add event listeners to verify buttons
+                const verifyButtons = document.querySelectorAll('.verify-btn');
+                verifyButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const recordId = this.getAttribute('data-record-id');
+                        verifyVaccinationRecord(recordId, this);
+                    });
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No unverified vaccinations</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading unverified vaccinations:', error);
+            document.getElementById('unverified-vaccinations').innerHTML = 
+                '<tr><td colspan="4" class="text-center">Failed to load data</td></tr>';
+        });
+}
+
+// Load low stock items (limited to 5 for dashboard)
+function loadLowStockItems() {
+    fetch('/prs/api/inventory?action=low-stock&threshold=20')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Low stock items:', data);
+            const tbody = document.getElementById('low-stock-items');
+            
+            if (data.status === 'success' && data.data.items.length > 0) {
+                tbody.innerHTML = '';
+                
+                data.data.items.slice(0, 5).forEach(item => {
+                    const row = document.createElement('tr');
+                    
+                    // Determine status
+                    let status = '';
+                    let statusClass = '';
+                    
+                    if (item.quantity_available === 0) {
+                        status = 'Out of Stock';
+                        statusClass = 'badge-error';
+                    } else if (item.quantity_available <= 5) {
+                        status = 'Critical';
+                        statusClass = 'badge-warning';
+                    } else {
+                        status = 'Low';
+                        statusClass = 'badge-info';
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${item.item_name}</td>
+                        <td>${item.location_name}</td>
+                        <td>${item.quantity_available}</td>
+                        <td><span class="badge ${statusClass}">${status}</span></td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No low stock items</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading low stock items:', error);
+            document.getElementById('low-stock-items').innerHTML = 
+                '<tr><td colspan="4" class="text-center">Failed to load data</td></tr>';
+        });
+}
+
+// Helper function to display user vaccinations (limited to 5 for dashboard)
 function loadUserVaccinationsForDisplay(records) {
     const tbody = document.getElementById('user-vaccinations');
     
@@ -1043,7 +1043,7 @@ function loadUserVaccinationsForDisplay(records) {
     
     tbody.innerHTML = '';
     
-    records.forEach(record => {
+    records.slice(0, 5).forEach(record => {
         const row = document.createElement('tr');
         
         let status = record.verified ? 
@@ -1061,7 +1061,7 @@ function loadUserVaccinationsForDisplay(records) {
     });
 }
 
-// Helper function to display user purchases
+// Helper function to display user purchases (limited to 5 for dashboard)
 function loadUserPurchasesForDisplay(purchases) {
     const tbody = document.getElementById('user-purchases');
     
@@ -1072,7 +1072,7 @@ function loadUserPurchasesForDisplay(purchases) {
     
     tbody.innerHTML = '';
     
-    purchases.forEach(purchase => {
+    purchases.slice(0, 5).forEach(purchase => {
         const row = document.createElement('tr');
         
         row.innerHTML = `
@@ -1086,7 +1086,7 @@ function loadUserPurchasesForDisplay(purchases) {
     });
 }
 
-// Helper function to load critical items
+// Helper function to load critical items (limited to 4 for dashboard)
 function loadCriticalItemsForDisplay() {
     fetch('/prs/api/items?action=active')
         .then(response => response.json())

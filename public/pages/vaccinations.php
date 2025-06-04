@@ -309,9 +309,9 @@ function loadVaccinationStats() {
         });
 }
 
-// Load verification queue
-function loadVerificationQueue(page = 1) {
-    fetch(`/prs/api/vaccinations?action=unverified&page=${page}&limit=10`)
+// Load verification queue (removed pagination)
+function loadVerificationQueue() {
+    fetch(`/prs/api/vaccinations?action=unverified&limit=1000`) // Load all records
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
@@ -368,9 +368,9 @@ function loadVerificationQueue(page = 1) {
         });
 }
 
-// Load verified vaccination records
-function loadVerifiedRecords(page = 1) {
-    fetch(`/prs/api/vaccinations?action=verified&page=${page}&limit=20`)
+// Load verified vaccination records (removed pagination)
+function loadVerifiedRecords() {
+    fetch(`/prs/api/vaccinations?action=verified&limit=1000`) // Load all records
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
@@ -489,13 +489,13 @@ function verifyVaccinationRecord(recordId, button) {
     });
 }
 <?php else: // Merchant & Public Users ?>
-// Load vaccination records
-function loadVaccinationRecords(page = 1) {
+// Load vaccination records (removed pagination)
+function loadVaccinationRecords() {
     // Check if viewing family member's records
     const urlParams = new URLSearchParams(window.location.search);
     const userId = urlParams.get('user_id') || <?php echo $userId; ?>;
     
-    fetch(`/prs/api/vaccinations?action=user&user_id=${userId}&page=${page}&limit=10`)
+    fetch(`/prs/api/vaccinations?action=user&user_id=${userId}&limit=1000`) // Load all records
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
